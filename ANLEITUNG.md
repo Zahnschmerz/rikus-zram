@@ -188,4 +188,4 @@ Die Sicherungen liegen neben den Originaldateien (`*.bak-rikuszram-*`). Der Rüc
 Fehler gefunden oder eine Idee? Melde sie gern — das Programm lebt von Rückmeldungen.
 
 **Rikus Zram** — von Gilbert Rikus · GPL-3.0
-Schwesterprogramm: **Rikus Mintshot** ([mintshot.rikus.info](https://mintshot.rikus.info)) — baut mit einem Klick einen bootfähigen Klon deines Linux-Mint-Systems.
+Schwesterprogramm: **Rikus Mintshot** ([snapshot.rikus.info](https://snapshot.rikus.info)) — baut mit einem Klick einen bootfähigen Klon deines Linux-Mint-Systems.

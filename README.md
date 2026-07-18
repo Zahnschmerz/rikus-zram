@@ -63,6 +63,6 @@ There are older attempts (VMM from 2013, SwapChanger, Swappolube, SwapManager, z
 
 **Website:** [zram.rikus.info](https://zram.rikus.info)
 **Author:** Gilbert Rikus · **Licence:** GPL-3.0
-**Sister project:** [Rikus Mintshot](https://mintshot.rikus.info) — one-click bootable clone of your running Linux Mint
+**Sister project:** [Rikus Mintshot](https://snapshot.rikus.info) — one-click bootable clone of your running Linux Mint
 
 *Deutsche Fassung: [README.de.md](README.de.md)*

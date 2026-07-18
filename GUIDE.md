@@ -188,4 +188,4 @@ The backups sit next to the original files (`*.bak-rikuszram-*`). The undo butto
 Found a bug or have an idea? Please report it — the program lives on feedback.
 
 **Rikus Zram** — by Gilbert Rikus · GPL-3.0
-Sister project: **Rikus Mintshot** ([mintshot.rikus.info](https://mintshot.rikus.info)) — a one-click bootable clone of your Linux Mint system.
+Sister project: **Rikus Mintshot** ([snapshot.rikus.info](https://snapshot.rikus.info)) — a one-click bootable clone of your Linux Mint system.

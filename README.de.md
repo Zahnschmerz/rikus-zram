@@ -52,6 +52,6 @@ Danach im Startmenü unter *System* → **Rikus Zram**.
 
 **Webseite:** [zram.rikus.info](https://zram.rikus.info)
 **Herausgeber:** Gilbert Rikus · **Lizenz:** GPL-3.0
-**Schwesterprogramm:** [Rikus Mintshot](https://mintshot.rikus.info) — bootfähiger Klon deines Linux-Mint-Systems mit einem Klick
+**Schwesterprogramm:** [Rikus Mintshot](https://snapshot.rikus.info) — bootfähiger Klon deines Linux-Mint-Systems mit einem Klick
 
 *Englische Fassung: [README.md](README.md)*
