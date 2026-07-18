@@ -71,6 +71,19 @@ Darunter stehen die Punkte, die dem Programm aufgefallen sind — im Klartext, n
 
 Unten führt ein Knopf weiter zur zweiten Seite.
 
+### ⭐ Wenn dein Rechner noch gar kein zram hat
+
+Dann steht die Ampel auf **Rot** oder **Gelb**, und darunter liest du, dass zram bei dir noch nicht eingerichtet ist. **Das ist kein Problem — genau dafür ist dieses Programm da.**
+
+Die zweite Seite bietet dir dann an, es **komplett einzurichten**:
+1. das Paket `zram-tools` wird installiert (dafür brauchst du kurz Internet),
+2. die Einstellungsdatei wird angelegt,
+3. der Dienst wird eingeschaltet — **auch für jeden künftigen Start**, nicht nur für jetzt.
+
+Du siehst vorher genau, was passieren wird, und musst es bestätigen.
+
+**Warum das nicht selbstverständlich ist:** Das Paket `zram-tools` bringt nur eine Startdatei für **systemd** mit. Auf Systemen mit einem anderen Startverfahren — **MX Linux, antiX, Devuan** — würde nach der Installation schlicht *nichts* starten, ohne jede Fehlermeldung. Rikus Zram legt dort zusätzlich das passende Startskript an. Deshalb funktioniert es auch auf diesen Systemen.
+
 ---
 
 ## 5. Die zweite Seite: Was wäre besser?

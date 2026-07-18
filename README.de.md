@@ -12,6 +12,7 @@ Der Haken: Einstellen lässt sich das bisher **nur über getippte Befehle und da
 
 ## Was es kann
 
+- **⭐ Einrichten, wo es noch kein zram gibt** — Paket installieren, einstellen, Dienst einschalten. Auch auf Systemen ohne systemd, wo `zram-tools` nur eine systemd-Einheit mitbringt und sonst gar nichts starten würde. **Das kann sonst kein Programm mit Fenster.**
 - **Anzeigen** — wie viel Arbeitsspeicher belegt ist, ob zram läuft, wie stark es gerade komprimiert, welche Swap-Bereiche es gibt. Mit Ampel und Klartext-Urteil.
 - **Empfehlen** — errechnet aus RAM-Größe, SSD oder Festplatte, Dateisystem und Ruhezustand, was für **diesen** Rechner passt. Mit Begründung in normaler Sprache.
 - **Einstellen** — drei Schieberegler: zram-Größe, swappiness, Swap-Datei. Du schiebst selbst, die Empfehlung steht als Markierung daneben.

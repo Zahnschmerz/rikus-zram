@@ -33,7 +33,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.1'
+VERSION = '0.8'
 
 
 # ---------------------------------------------------------------------------
@@ -403,114 +403,6 @@ def dienst_befehl(sys_):
     return 'service zramswap restart'
 
 
-INIT_SKRIPT = '/etc/init.d/zramswap'
-
-# Ein vollwertiges LSB-Startskript. Es ruft nur das auf, was auch die
-# systemd-Fassung des Pakets aufruft (»zramswap start« bzw. »stop«).
-INIT_SKRIPT_INHALT = '''#!/bin/sh
-### BEGIN INIT INFO
-# Provides:          zramswap
-# Required-Start:    $local_fs
-# Required-Stop:     $local_fs
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: zram-based swap
-# Description:       Compressed swap in RAM (set up by Rikus Zram)
-### END INIT INFO
-# Von Rikus Zram angelegt, weil das Paket zram-tools nur eine
-# systemd-Einheit mitbringt und auf Systemen ohne systemd sonst
-# nichts starten wuerde.
-PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DAEMON=/usr/sbin/zramswap
-[ -x "$DAEMON" ] || exit 0
-
-case "$1" in
-  start)   "$DAEMON" start ;;
-  stop)    "$DAEMON" stop ;;
-  restart|force-reload) "$DAEMON" stop 2>/dev/null || true; "$DAEMON" start ;;
-  status)  /sbin/zramctl 2>/dev/null | grep -q zram && echo "zram laeuft" \\
-             || { echo "zram laeuft nicht"; exit 3; } ;;
-  *) echo "Aufruf: $0 {start|stop|restart|status}" >&2; exit 2 ;;
-esac
-exit 0
-'''
-
-
-def dienst_start_befehle(sys_):
-    """Dienst dauerhaft einschalten UND jetzt starten.
-
-    Zwei Dinge, nicht eines: »start« gilt nur bis zum Neustart, das
-    Eintragen sorgt dafuer, dass zram nach dem naechsten Hochfahren wieder
-    da ist. Wer nur startet, wundert sich am naechsten Tag.
-
-    ⚠️⚠️ HART ERARBEITET (19.07.2026, echter Test in einem ausgepackten
-    antiX 26): **Das Paket zram-tools liefert NUR eine systemd-Einheit** —
-    `/usr/lib/systemd/system/zramswap.service` — und KEIN Init-Skript.
-    Auf yoga (MX) faellt das nicht auf, weil MX ein eigenes Zusatzpaket
-    `zramswap-sysvinit-compat` mitliefert. Das gibt es in antiX NICHT
-    (`apt-cache policy` dort: kein Kandidat).
-    Folge: Ein blindes `update-rc.d zramswap defaults` scheitert auf antiX
-    mit »initscript does not exist« — genau auf dem System, fuer das dieses
-    Programm als einziges taugt.
-    ➡️ Deshalb legen wir das Startskript selbst an, wenn keines da ist.
-    antiX/runit fuehrt `/etc/rcS.d/S*` aus, `update-rc.d` wirkt also."""
-    # ⚠️⚠️ ZWEITER TEUER ERKAUFTER PUNKT (19.07., derselbe antiX-Test):
-    # Der Start MUSS fehlschlagen duerfen, ohne alles andere mitzureissen.
-    # Das Skript laeuft mit »set -e« — als der zram-Start einmal scheiterte
-    # (Kernel ohne zram-Modul), brach es sofort ab, und **swappiness wurde
-    # nie gesetzt**. Der Nutzer haette „nicht durchgelaufen" gesehen und
-    # NICHTS von seinen Einstellungen bekommen, obwohl zwei davon problemlos
-    # moeglich waren. Ob zram wirklich laeuft, zeigt ohnehin die Nachmessung.
-    if sys_['ist_systemd']:
-        return ['systemctl enable zramswap || true',
-                'systemctl restart zramswap || true']
-
-    # ⚠️ Die Existenzpruefung steht IM Skript, nicht hier: Zwischen Planen und
-    # Ausfuehren wird womoeglich erst das Paket installiert. Was hier gilt,
-    # muss dort nicht mehr gelten.
-    return [
-        f'if [ ! -f "{INIT_SKRIPT}" ]; then',
-        f'  cat > "{INIT_SKRIPT}" <<\'RIKUSZRAM_INIT_EOF\'',
-        INIT_SKRIPT_INHALT.rstrip('\n'),
-        'RIKUSZRAM_INIT_EOF',
-        f'  chmod 755 "{INIT_SKRIPT}"',
-        'fi',
-        'update-rc.d zramswap defaults >/dev/null 2>&1 || true',
-        # Direkt das Programm aufrufen statt »service«: das funktioniert
-        # auch dort, wo »service« den Dienst (noch) nicht kennt.
-        '/usr/sbin/zramswap start || true',
-    ]
-
-
-def zram_lage(einst, zram, sys_):
-    """Was fehlt diesem Rechner, damit zram ueberhaupt laufen kann?
-
-    Drei Dinge muessen zusammenkommen, und sie fehlen unabhaengig voneinander:
-      1. das Paket zram-tools (liefert Dienst + Konfigdatei)
-      2. die Konfigdatei /etc/default/zramswap
-      3. der laufende Dienst
-
-    ⚠️ Diese Unterscheidung ist der Grund, warum das Programm ueberhaupt
-    existiert: Auf einem Rechner OHNE zram half die alte Fassung gar nicht
-    weiter — sie konnte nur aendern, was schon da war."""
-    paket_da = bool(_werkzeug('zramswap')) or os.path.exists(
-        '/usr/sbin/zramswap') or os.path.exists('/usr/bin/zramswap')
-    # Zweiter Weg: das Init-Skript bzw. die Unit. Auf SysVinit liegt es in
-    # /etc/init.d, unter systemd als Unit — eines von beidem reicht als Beweis.
-    if not paket_da:
-        paket_da = (os.path.exists('/etc/init.d/zramswap') or
-                    os.path.exists('/lib/systemd/system/zramswap.service') or
-                    os.path.exists('/usr/lib/systemd/system/zramswap.service'))
-    return {
-        'paket_da': paket_da,
-        'konfig_da': einst['vorhanden'],
-        'laeuft': len(zram) > 0,
-        # Nur wenn alles drei fehlt, ist es ein echtes „von Null einrichten".
-        'muss_eingerichtet_werden': not (paket_da and einst['vorhanden']
-                                         and len(zram) > 0),
-    }
-
-
 def swappiness_zieldatei(swp):
     """In WELCHE Datei schreiben wir?
     Gibt es schon eine, aendern wir DIESE — sonst haetten wir zwei Dateien,
@@ -521,79 +413,12 @@ def swappiness_zieldatei(swp):
 
 
 def aenderungen_sammeln(sys_, swp, einst, ziel_prozent, ziel_swappiness,
-                        ziel_swap_gb=None, swap=None, platte=None, zram=None):
+                        ziel_swap_gb=None, swap=None, platte=None):
     """Was soll geaendert werden? Liefert eine Liste in KLARTEXT (fuer den
     Trockenlauf) und die noetigen Shell-Zeilen."""
     schritte = []      # (klartext, shell-zeilen)
     datum = subprocess.run(['/usr/bin/date', '+%Y%m%d-%H%M%S'],
                            capture_output=True, text=True).stdout.strip()
-    lage = zram_lage(einst, zram or [], sys_)
-
-    # --- 0. zram ERST EINRICHTEN, wenn es noch keins gibt --------------------
-    # ⚠️ Das ist der Kern des Programms und der Grund, warum es gebaut wurde:
-    # Alles darunter kann nur AENDERN, was schon da ist. Auf einem Rechner ohne
-    # zram passierte frueher gar nichts — der Regler liess sich schieben, das
-    # Uebernehmen meldete „nichts zu tun". Genau das ist es, was sonst kein
-    # Programm mit Fenster kann.
-    if lage['muss_eingerichtet_werden']:
-        text = []
-        zeilen = []
-
-        if not lage['paket_da']:
-            text.append(t('das Paket zram-tools installieren '
-                          '(es bringt den zram-Dienst mit)',
-                          'install the package zram-tools '
-                          '(it provides the zram service)'))
-            # -y, weil niemand im Passwort-Fenster eine Rueckfrage beantworten
-            # kann; DEBIAN_FRONTEND, damit keine Dialogmaske aufgeht.
-            zeilen += [
-                'export DEBIAN_FRONTEND=noninteractive',
-                'apt-get update -qq || true',
-                'apt-get install -y -qq zram-tools',
-            ]
-
-        if not lage['konfig_da']:
-            d = einst['pfad']
-            text.append(t(f'die Einstellungsdatei {d} anlegen',
-                          f'create the settings file {d}'))
-            # Kein cp-Backup: die Datei gibt es ja noch nicht. Falls das Paket
-            # sie gerade selbst mitgebracht hat, wird sie hier ueberschrieben —
-            # deshalb VORHER sichern, wenn sie dann doch existiert.
-            zeilen += [
-                f'[ -f "{d}" ] && cp -a "{d}" "{d}.bak-{STEMPEL}-{datum}" || true',
-                f'cat > "{d}" <<\'RIKUSZRAM_EOF\'',
-                '# von Rikus Zram angelegt',
-                'ALGO=zstd',
-                f'PERCENT={ziel_prozent}',
-                'PRIORITY=100',
-                'RIKUSZRAM_EOF',
-            ]
-        elif str(einst['werte'].get('PERCENT')) != str(ziel_prozent):
-            # Konfig ist da, aber der Wert stimmt nicht — mitnehmen, sonst
-            # richten wir zram mit der falschen Groesse ein.
-            d = einst['pfad']
-            text.append(t(f'die zram-Größe auf {ziel_prozent} % setzen',
-                          f'set the zram size to {ziel_prozent} %'))
-            zeilen += [
-                f'cp -a "{d}" "{d}.bak-{STEMPEL}-{datum}"',
-                f'sed -i "s/^[[:space:]]*PERCENT=.*/PERCENT={ziel_prozent}/" "{d}"',
-                f'grep -q "^PERCENT=" "{d}" || echo "PERCENT={ziel_prozent}" >> "{d}"',
-            ]
-
-        text.append(t('den zram-Dienst einschalten und starten '
-                      '(auch nach jedem Neustart)',
-                      'switch the zram service on and start it '
-                      '(also after every reboot)'))
-        zeilen += dienst_start_befehle(sys_)
-
-        schritte.append((t('zram einrichten: ', 'set up zram: ') +
-                         ', '.join(text),
-                         zeilen,
-                         einst['pfad'] if lage['konfig_da'] else ''))
-
-        # Die Groessen-Aenderung unten wuerde dasselbe nochmal tun.
-        einst = dict(einst, vorhanden=True,
-                     werte=dict(einst['werte'], PERCENT=str(ziel_prozent)))
 
     # --- 1. Turbo-Groesse ---------------------------------------------------
     ist_prozent = einst['werte'].get('PERCENT')
@@ -847,22 +672,13 @@ def skript_bauen(schritte, sys_):
               'export PATH=/sbin:/usr/sbin:/bin:/usr/bin']
     for _text, shell, _sicherung in schritte:
         zeilen += shell
-    alle = [z for _t, sh, _s in schritte for z in sh]
-    # Den zram-Dienst NUR neu starten, wenn seine Einstellungen angefasst
+    # Den Turbo-Dienst NUR neu starten, wenn seine Einstellungen angefasst
     # wurden. Bei einer reinen Reserve-Änderung waere das unnoetig — und ein
     # Neustart schiebt alles Ausgelagerte kurz zurueck in den Arbeitsspeicher.
-    # ⚠️ Nicht doppelt: beim Einrichten steht der Start schon in den Schritten.
-    schon_gestartet = any('zramswap' in z and
-                          ('restart' in z or 'start' in z) for z in alle)
-    if any('zramswap' in z for z in alle) and not schon_gestartet:
+    if any('zramswap' in z for _t, sh, _s in schritte for z in sh):
         zeilen.append(dienst_befehl(sys_) + ' || true')
     zeilen.append('echo RIKUSZRAM-FERTIG')
     return '\n'.join(zeilen) + '\n'
-
-
-def braucht_installation(schritte):
-    """Wird ein Paket nachinstalliert? Dann darf es laenger dauern (Netz)."""
-    return any('apt-get install' in z for _t, sh, _s in schritte for z in sh)
 
 
 def sicherungen_finden():
@@ -886,29 +702,14 @@ def bewerten(ram, zram, swap, swp, einst):
                 [t('Wird der Arbeitsspeicher voll, bricht der Rechner ab, '
                    'statt auszulagern. zram würde das verhindern.',
                    'When RAM runs out, programs are killed instead of being '
-                   'swapped out. zram would prevent that.'),
-                 t('▶ Dieses Programm kann zram für dich einrichten — auf der '
-                   'nächsten Seite. Du brauchst dafür kein Terminal.',
-                   '▶ This program can set zram up for you — on the next page. '
-                   'You do not need a terminal for that.')])
+                   'swapped out. zram would prevent that.')])
 
-    if not zram_laeuft:
-        if einst['vorhanden']:
-            hinweise.append(t(
-                f'zram ist in {sicher(einst["pfad"])} eingerichtet, läuft aber '
-                'gerade NICHT. Auf der nächsten Seite kann dieses Programm den '
-                'Dienst einschalten und starten.',
-                f'zram is configured in {sicher(einst["pfad"])} but is NOT '
-                'running. On the next page this program can switch the service '
-                'on and start it.'))
-        else:
-            hinweise.append(t(
-                'Auf diesem Rechner ist zram noch gar nicht eingerichtet. '
-                'Dieses Programm kann das auf der nächsten Seite für dich '
-                'erledigen: Paket installieren, einstellen, einschalten.',
-                'zram is not set up on this machine at all. On the next page '
-                'this program can do it for you: install the package, '
-                'configure it, switch it on.'))
+    if einst['vorhanden'] and not zram_laeuft:
+        hinweise.append(t(
+            f'zram ist in {sicher(einst["pfad"])} eingerichtet, läuft aber '
+            'gerade NICHT. Meist hilft ein Neustart des Dienstes.',
+            f'zram is configured in {sicher(einst["pfad"])} but is NOT running. '
+            'Restarting the service usually helps.'))
 
     w = einst['werte']
     if w.get('SIZE') and w.get('PERCENT'):
@@ -1510,8 +1311,7 @@ class RikusZram(Gtk.Window):
 
         schritte, _datum = aenderungen_sammeln(
             self.daten['sys'], self.daten['swp'], self.daten['einst'],
-            ziel_p, ziel_s, ziel_sw, self.daten['swap'], self.daten['platte'],
-            self.daten['zram'])
+            ziel_p, ziel_s, ziel_sw, self.daten['swap'], self.daten['platte'])
 
         if not schritte:
             self._dialog(Gtk.MessageType.INFO,
@@ -1529,20 +1329,13 @@ class RikusZram(Gtk.Window):
                            '\n'.join(f'•  {s}' for s in gesichert))
                           if gesichert else '')
         dienst = dienst_befehl(self.daten['sys'])
-        installiert_mit = braucht_installation(schritte)
-        netzhinweis = (t('\n\n⚠️ Dafür wird ein Paket aus dem Internet '
-                         'nachgeladen — du brauchst eine Verbindung. '
-                         'Das kann eine Minute dauern.',
-                         '\n\n⚠️ This downloads a package from the internet — '
-                         'you need a connection. It may take a minute.')
-                       if installiert_mit else '')
 
         if nur_zeigen:
             self._dialog(
                 Gtk.MessageType.INFO,
                 t('Das würde geändert (nichts passiert)',
                   'This would change (nothing happened)'),
-                f'{was}{sicherungstext}{netzhinweis}\n\n' +
+                f'{was}{sicherungstext}\n\n' +
                 t(f'Danach wird der zram-Dienst neu gestartet:\n•  {dienst}\n\n'
                   'Es wurde NICHTS verändert — das war nur die Vorschau.',
                   f'Afterwards the zram service is restarted:\n•  {dienst}\n\n'
@@ -1554,7 +1347,7 @@ class RikusZram(Gtk.Window):
             buttons=Gtk.ButtonsType.OK_CANCEL,
             text=t('Jetzt wirklich ändern?', 'Really apply now?'))
         frage.format_secondary_text(
-            f'{was}{sicherungstext}{netzhinweis}\n\n' +
+            f'{was}{sicherungstext}\n\n' +
             t(f'Danach: {dienst}\n\nDu wirst gleich nach deinem Passwort '
               'gefragt.',
               f'Then: {dienst}\n\nYou will be asked for your password next.'))
@@ -1566,12 +1359,8 @@ class RikusZram(Gtk.Window):
         skript = skript_bauen(schritte, self.daten['sys'])
         befehl = root_praefix() + ['/bin/bash', '-c', skript]
         try:
-            # Beim Nachinstallieren mehr Zeit: apt muss die Paketliste holen
-            # und herunterladen. 120 s reichen dafuer bei langsamer Leitung
-            # NICHT — und ein Abbruch mitten in apt ist das Letzte, was man
-            # auf einem fremden Rechner auslösen will.
             e = subprocess.run(befehl, capture_output=True, text=True,
-                               timeout=600 if installiert_mit else 120)
+                               timeout=120)
         except Exception as fehler:
             self._dialog(Gtk.MessageType.ERROR,
                          t('Fehlgeschlagen', 'Failed'), str(fehler))

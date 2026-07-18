@@ -71,6 +71,19 @@ Below it are the points the program noticed, in plain words rather than error co
 
 A button at the bottom leads to the second page.
 
+### ⭐ If your machine has no zram at all yet
+
+Then the traffic light shows **red** or **amber**, and below it you will read that zram is not set up on your machine. **That is not a problem — it is exactly what this program is for.**
+
+The second page then offers to **set it up completely**:
+1. the package `zram-tools` gets installed (you need internet briefly for that),
+2. the settings file is created,
+3. the service is switched on — **for every future boot as well**, not just for now.
+
+You see exactly what will happen beforehand, and you have to confirm it.
+
+**Why this is not a given:** The package `zram-tools` ships only a startup file for **systemd**. On systems using a different init — **MX Linux, antiX, Devuan** — nothing at all would start after installing it, without any error message. Rikus Zram writes the matching start script there as well. That is why it works on those systems too.
+
 ---
 
 ## 5. Second page: what would be better?

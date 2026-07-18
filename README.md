@@ -12,6 +12,7 @@ The catch: configuring this means typing commands and editing system files. Riku
 
 ## What it does
 
+- **⭐ Set zram up where there is none yet** — install the package, write the settings, switch the service on. Including on systems without systemd, where `zram-tools` ships only a systemd unit and nothing would start otherwise. **No other GUI does this.**
 - **Show** — how much RAM is in use, whether zram is running, how well it is compressing right now, which swap areas exist. With a traffic light and a plain-language verdict.
 - **Recommend** — works out what fits **this** machine from RAM size, SSD or spinning disk, filesystem and hibernation setup. With the reasoning in plain words.
 - **Adjust** — three sliders: zram size, swappiness, swap file. You move them yourself; the recommendation sits on the scale as a marker.
