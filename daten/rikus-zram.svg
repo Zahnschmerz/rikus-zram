@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#7b5bd6"/><stop offset="1" stop-color="#3d2a80"/></linearGradient></defs>
+  <rect width="256" height="256" rx="48" fill="url(#g)"/>
+  <!-- Chip -->
+  <rect x="72" y="72" width="112" height="112" rx="14" fill="#fff"/>
+  <!-- Beinchen -->
+  <g fill="#fff">
+    <rect x="88" y="52" width="12" height="20" rx="3"/><rect x="122" y="52" width="12" height="20" rx="3"/><rect x="156" y="52" width="12" height="20" rx="3"/>
+    <rect x="88" y="184" width="12" height="20" rx="3"/><rect x="122" y="184" width="12" height="20" rx="3"/><rect x="156" y="184" width="12" height="20" rx="3"/>
+    <rect x="52" y="88" width="20" height="12" rx="3"/><rect x="52" y="122" width="20" height="12" rx="3"/><rect x="52" y="156" width="20" height="12" rx="3"/>
+    <rect x="184" y="88" width="20" height="12" rx="3"/><rect x="184" y="122" width="20" height="12" rx="3"/><rect x="184" y="156" width="20" height="12" rx="3"/>
+  </g>
+  <!-- Z -->
+  <path d="M100 100 H156 L112 152 H158 V166 H96 L140 114 H100 Z" fill="#3d2a80"/>
+</svg>

@@ -1,0 +1,191 @@
+# Rikus Zram — Anleitung (Deutsch)
+
+**Arbeitsspeicher besser nutzen — ohne ein einziges getipptes Kommando.**
+Von Gilbert Rikus · Freie Software (GPL-3.0)
+
+---
+
+## 1. Was ist das überhaupt?
+
+Stell dir deinen Arbeitsspeicher (RAM) als **Schreibtisch** vor. Alles, woran der Rechner gerade arbeitet, liegt darauf. Wird der Tisch voll, muss etwas weichen.
+
+Linux hat dafür zwei Möglichkeiten:
+
+**Swap — die Ablage auf der Festplatte.**
+Selten gebrauchte Sachen wandern von der Tischplatte in einen Aktenschrank. Der Tisch wird frei, aber jedes Zurückholen dauert — die Platte ist viel langsamer als der Arbeitsspeicher.
+
+**zram — der Vakuumbeutel.**
+Statt Sachen wegzuräumen, presst der Rechner sie **auf dem Tisch selbst** zusammen. Wie ein Vakuumbeutel für Winterkleidung: Es passt viel mehr hin, und nichts muss den Tisch verlassen. Deshalb ist es **um ein Vielfaches schneller** als der Aktenschrank.
+
+Typisch werden Daten dabei **3- bis 4-fach** kleiner. Aus 4 GB Daten werden gut 1 GB belegter Speicher.
+
+**Und was macht dieses Programm?**
+zram und Swap kann man unter Linux nur über getippte Befehle und das Bearbeiten von Systemdateien einstellen. Rikus Zram macht daraus ein Fenster mit Schiebereglern — mit Erklärung, was jeder Wert bedeutet, und einer Empfehlung für genau deinen Rechner.
+
+---
+
+## 2. Was du brauchst
+
+- **Debian, Ubuntu, Linux Mint, LMDE, MX Linux, antiX, Zorin, Pop!\_OS** oder ein anderes System aus dieser Familie
+- Dein normales Benutzerpasswort (nur beim Ändern, nicht beim Anschauen)
+- Sonst nichts — alle benötigten Bausteine installiert das Paket mit
+
+Das Programm läuft mit **systemd** und mit **SysVinit** (also auch auf MX Linux und antiX). Es merkt selbst, welches davon dein System benutzt.
+
+---
+
+## 3. Installieren
+
+Lade `rikus-zram_1.0_all.deb` herunter und öffne es mit einem Doppelklick — dein System fragt nach dem Passwort und installiert es.
+
+Oder im Terminal:
+
+```
+sudo apt install ./rikus-zram_1.0_all.deb
+```
+
+Danach findest du **„Rikus Zram"** im Startmenü unter *System*.
+
+---
+
+## 4. Die erste Seite: Was ist da?
+
+Nach dem Start siehst du, wie es auf deinem Rechner gerade aussieht. **Hier wird nichts verändert — es wird nur geschaut.**
+
+**Kurz gesagt** — eine Ampel mit Klartext-Urteil:
+- 🟢 **Grün:** Alles in Ordnung
+- 🟡 **Gelb:** Läuft, aber es gibt etwas anzuschauen
+- 🔴 **Rot:** Weder zram noch Swap — bei vollem Speicher bricht ein Programm ab
+
+Darunter stehen die Punkte, die dem Programm aufgefallen sind — im Klartext, nicht als Fehlernummer.
+
+**Arbeitsspeicher** — wie viel belegt und wie viel frei ist.
+
+**zram** — ob es läuft, wie groß es ist, welches Kompressionsverfahren (meist `zstd`) und **wie stark gerade zusammengepresst wird**. Steht dort „3 GB Daten belegen nur 0,8 GB", dann arbeitet zram gerade knapp vierfach.
+
+**Swap** — ob es eine Auslagerungsdatei oder -partition gibt, wie groß, wie voll, und mit welcher **Priorität**.
+
+**Einstellungen** — der Wert **swappiness** und was in der Konfigurationsdatei steht.
+
+**Dieses System** — welche Distribution, welches Startsystem, ob SSD oder drehende Platte, welches Dateisystem.
+
+Unten führt ein Knopf weiter zur zweiten Seite.
+
+---
+
+## 5. Die zweite Seite: Was wäre besser?
+
+Hier siehst du **drei Schieberegler**. Sie stehen auf dem, **was bei dir gerade läuft**. Auf der Skala darunter ist markiert, was für deinen Rechner **empfohlen** wäre — dorthin schiebst du selbst, wenn du möchtest.
+
+Unter jedem Regler erklärt eine Zeile, was der eingestellte Wert bedeutet — sie ändert sich mit, während du schiebst. Und in Farbe steht dabei, ob du gerade auf deinem jetzigen Stand bist, auf der Empfehlung, oder auf etwas Drittem.
+
+### Regler 1 — zram-Größe
+
+In Prozent vom Arbeitsspeicher. **100 % ist der bewährte Wert:** zram so groß wie der Arbeitsspeicher. Das klingt viel, ist es aber nicht — der Platz wird erst belegt, wenn er gebraucht wird, und die Daten darin sind ja zusammengepresst.
+
+Bei sehr viel Arbeitsspeicher (ab 32 GB) genügt die Hälfte.
+
+### Regler 2 — swappiness
+
+Ein Wert zwischen 0 und 200. Er sagt, **wie bereitwillig** der Rechner selten gebrauchte Daten beiseiteschiebt.
+
+| Wert | Bedeutung |
+|---|---|
+| 0–20 | nur im äußersten Notfall auslagern |
+| 60 | der Standard ohne zram |
+| **150** | **offensiv — passend, wenn zram läuft** |
+| 200 | sehr offensiv |
+
+**Warum darf er mit zram so hoch sein?** Weil das Auslagern dann in den schnellen Arbeitsspeicher geht und nicht auf die langsame Platte. Es kostet also kaum etwas.
+
+### Regler 3 — Swap-Datei
+
+Die Reserve auf der Festplatte, in Gigabyte. Sie bleibt im Alltag leer und greift nur, wenn Arbeitsspeicher **und** zram voll sind — ein Sicherheitsnetz.
+
+**Wann brauchst du sie?**
+- **Wenig Arbeitsspeicher (bis 4 GB):** ja, unbedingt
+- **8 bis 16 GB:** eine kleine Reserve von 2 GB schadet nicht
+- **Ab 32 GB mit laufendem zram:** eigentlich nicht
+- **Wenn du den Ruhezustand (hibernate) nutzen willst:** dann muss sie **mindestens so groß wie dein Arbeitsspeicher** sein — denn dabei wird der gesamte Speicherinhalt auf die Platte geschrieben, und **das kann zram nicht leisten**
+
+---
+
+## 6. Änderung übernehmen — was dabei passiert
+
+Wenn die Regler so stehen, wie du es willst:
+
+**Schritt 1 — „Zeigen, was geändert würde"**
+Ein Fenster listet im Klartext auf, was passieren würde, welche Dateien vorher gesichert werden und welcher Dienst neu gestartet wird. **Es passiert dabei garantiert nichts** — das ist nur die Vorschau.
+
+**Schritt 2 — „Übernehmen …"**
+Dieselbe Liste, aber mit der Frage „Jetzt wirklich ändern?". Erst nach deinem Klick kommt die **Passwortabfrage**.
+
+**Schritt 3 — die Nachmessung**
+Danach misst das Programm **selbst nach**, ob die Änderung wirklich gegriffen hat, und zeigt dir das mit ✔ oder ✖ pro Punkt. Kein „müsste jetzt passen" — es wird nachgeschaut.
+
+### Was das Programm dabei für dich absichert
+
+- **Jede Datei wird vorher gesichert** (`<datei>.bak-rikuszram-<datum>`)
+- **Es prüft vorher, ob genug Platz da ist** — und bricht mit Begründung ab, wenn nicht
+- **Es warnt, wenn gerade Daten ausgelagert sind**, die beim Abschalten zurück in den Arbeitsspeicher müssten
+- **Es fasst keine Swap-Partitionen an**, nur Dateien — Partitionen zu verändern könnte Daten zerstören
+- **Es räumt keine fremden Ordner weg**
+
+---
+
+## 7. Rückgängig machen
+
+Gibt es Sicherungen, erscheint auf der zweiten Seite ein Knopf **„Rückgängig"**. Ein Klick stellt den Zustand von vor der Änderung wieder her.
+
+Von Hand geht es auch:
+
+```
+sudo cp /etc/default/zramswap.bak-rikuszram-<datum> /etc/default/zramswap
+sudo service zramswap restart      # bei systemd: systemctl restart zramswap
+```
+
+---
+
+## 8. Sonderfall btrfs — bitte lesen, wenn du btrfs benutzt
+
+Liegt dein System auf **btrfs** (das prüft das Programm selbst und sagt es dir), gilt eine Besonderheit:
+
+**Ein Bereich mit einer aktiven Swap-Datei kann nicht mehr gesichert werden.** Läge die Datei einfach in `/`, könnte **Timeshift keine Sicherungspunkte mehr anlegen** — und zwar lautlos, ohne Fehlermeldung. Du würdest es erst merken, wenn du eine Sicherung brauchst.
+
+**Deshalb legt Rikus Zram die Datei in einen eigenen, abgetrennten Bereich** (`/swap`) und erzeugt sie mit dem btrfs-eigenen Befehl, der alles Nötige richtig einstellt. Nach dem Anlegen prüft das Programm nach, ob Timeshift weiterhin arbeiten kann, und zeigt dir das Ergebnis.
+
+Du musst dafür nichts tun — es passiert von selbst. Der Hinweis steht hier, damit du weißt, **warum** es diesen zusätzlichen Bereich gibt.
+
+---
+
+## 9. Häufige Fragen
+
+**Ist das gefährlich?**
+Anschauen und Empfehlen läuft ganz ohne Passwort und ohne Schreibzugriff. Geändert wird nur, was du ausdrücklich bestätigst — mit Vorschau, Sicherung und Rückgängig-Knopf.
+
+**Brauche ich zram überhaupt?**
+Wenn dein Rechner bei vielen offenen Programmen zäh wird: ja. zram verschafft dir spürbar mehr Luft, ohne dass etwas auf die langsame Platte muss. Auf modernen Systemen ist es weit verbreitet.
+
+**Warum zeigt mir ein anderes Programm andere Zahlen?**
+Eine 2-GB-Swap-Datei meldet sich dem System als 1,999996 GB — die ersten Kilobyte sind ein interner Kopf und nicht nutzbar. Manche Programme schneiden das auf „1 GB" ab. Rikus Zram rundet auf **2 GB**, weil das die Größe ist, die du eingestellt hast.
+
+**Was ist mit dem Ruhezustand?**
+Der schreibt den gesamten Arbeitsspeicher auf die Festplatte. Dafür brauchst du eine Swap-**Datei oder -Partition mindestens in RAM-Größe**. zram kann das nicht — es liegt ja selbst im Arbeitsspeicher, der beim Ausschalten leer wird.
+
+**Kann ich es wieder loswerden?**
+`sudo apt remove rikus-zram`. Deine Einstellungen und eine angelegte Swap-Datei bleiben erhalten — das Programm räumt dir nichts weg, was du eingerichtet hast.
+
+**Was, wenn etwas schiefgeht?**
+Die Sicherungen liegen neben den Originaldateien (`*.bak-rikuszram-*`). Der Rückgängig-Knopf stellt sie wieder her. Und Änderungen an zram und swappiness wirken sich nie auf deine Daten aus — es geht nur um Speicherverwaltung.
+
+---
+
+## Hilfe und Rückmeldungen
+
+**Webseite:** [zram.rikus.info](https://zram.rikus.info)
+**Quelltext und Fehlermeldungen:** [github.com/Zahnschmerz/rikus-zram](https://github.com/Zahnschmerz/rikus-zram)
+
+Fehler gefunden oder eine Idee? Melde sie gern — das Programm lebt von Rückmeldungen.
+
+**Rikus Zram** — von Gilbert Rikus · GPL-3.0
+Schwesterprogramm: **Rikus Mintshot** ([mintshot.rikus.info](https://mintshot.rikus.info)) — baut mit einem Klick einen bootfähigen Klon deines Linux-Mint-Systems.

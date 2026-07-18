@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+paket/
+alte-staende/
+*.deb
+*.sha256
