@@ -896,15 +896,13 @@ class RikusZram(Gtk.Window):
     def _regler(self, box, von, bis, ist, soll, schritt, beschriftung):
         """Schieberegler: steht auf dem IST-Wert, Empfehlung als Markierung.
 
-        ⚠️ Wechselvolle Geschichte, damit sie niemand rueckgaengig macht:
-        Zuerst stand der Regler auf dem Ist-Wert. Gilbert bemaengelte am
-        18.07.2026 „empfohlen 2 GB ist irrefuehrend ... letztendlich ging er
-        auf 1 zurueck" — Claude schloss daraus, die Regler sollten auf der
-        Empfehlung stehen, und baute das (v0.5). FALSCHER SCHLUSS: Gilberts
-        Aerger galt dem RUNDUNGSFEHLER (siehe gb_gerundet), nicht dem
-        Reglerverhalten. Seine Klarstellung: „auf der skala steht dann
-        empfehlung z.B. 100 ... das jeder selber den schieberegler verschiebt".
-        Also: Regler auf IST, Empfehlung sichtbar daneben, Nutzer schiebt selbst.
+        ⚠️ Bitte nicht umbauen — das ist Absicht, nicht Zufall:
+        Der Regler zeigt, was auf dem Rechner WIRKLICH eingestellt ist. Die
+        Empfehlung steht als Markierung auf der Skala daneben; verschieben
+        muss der Nutzer selbst. Ein Regler, der von sich aus auf der
+        Empfehlung steht, verwischt genau diesen Unterschied — man sieht dann
+        nicht mehr, was man gerade hat, und veraendert womoeglich etwas, ohne
+        es zu merken.
         """
         skala = Gtk.Scale.new_with_range(
             Gtk.Orientation.HORIZONTAL, von, bis, schritt)
