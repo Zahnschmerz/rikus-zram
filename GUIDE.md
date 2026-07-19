@@ -39,7 +39,7 @@ The program works with **systemd** and with **SysVinit** (so also on MX Linux an
 You do **not** need a terminal for this.
 
 **Step 1 — Download.**
-Open the download page and click the file ending in `.deb`:
+Open the download page and click the file **`rikus-zram-neueste.deb`**:
 
 👉 **https://github.com/Zahnschmerz/rikus-zram/releases/latest**
 
@@ -56,10 +56,10 @@ Open your **Downloads** folder and **double-click** the file you just downloaded
 This single command is enough — it works from **any** folder:
 
 ```
-sudo apt install ~/Downloads/rikus-zram_*.deb
+sudo apt install ~/Downloads/rikus-zram*.deb
 ```
 
-The `*` stands for the version number, so the command stays correct when a newer release comes out.
+The `*` stands for the changing part of the file name. The command therefore matches **any** of the offered files — whether you downloaded `rikus-zram_1.6_all.deb` or `rikus-zram-neueste.deb` — and stays correct for future releases.
 
 ⚠️ Use `apt install`, **not** `dpkg -i`: only `apt` pulls in missing dependencies by itself.
 

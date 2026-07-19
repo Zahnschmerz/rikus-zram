@@ -5,6 +5,26 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.7 — 19. Juli 2026
+
+**🔴 🇩🇪 Der Terminal-Befehl aus der Anleitung fand die heruntergeladene Datei nicht.**
+
+- **Behoben: Ein Zeichen im Befehl war falsch.** Zum Herunterladen werden zwei Dateien angeboten — `rikus-zram_1.6_all.deb` (mit **Unterstrich**) und `rikus-zram-neueste.deb` (mit **Bindestrich**). Der Befehl in der Anleitung lautete `rikus-zram_*.deb` und passte damit **nur auf die erste**. Wer die zweite geladen hatte, bekam „keine Treffer" und konnte nicht installieren.
+  Jetzt heißt es `rikus-zram*.deb` — das passt auf **beide**.
+- **Behoben: Die Anleitung sagte „die Datei, die auf `.deb` endet".** Davon gibt es zwei. Jetzt wird die Datei **beim Namen genannt** (`rikus-zram-neueste.deb`), und der Download-Verweis führt **direkt auf diese Datei** statt auf die Liste aller Anhänge.
+
+*Am Programm selbst hat sich nichts geändert.*
+
+**🔴 🇬🇧 The terminal command from the guide did not find the downloaded file.**
+
+- **Fixed: one character in the command was wrong.** Two files are offered for download — `rikus-zram_1.6_all.deb` (with an **underscore**) and `rikus-zram-neueste.deb` (with a **hyphen**). The guide said `rikus-zram_*.deb`, which matches **only the first one**. Anyone who downloaded the second got "no matches" and could not install.
+  It now reads `rikus-zram*.deb`, which matches **both**.
+- **Fixed: the guide said "the file ending in `.deb`".** There are two of those. The file is now **named explicitly** (`rikus-zram-neueste.deb`), and the download link points **directly at that file** instead of at the list of assets.
+
+*No change to the program itself.*
+
+---
+
 ## 1.6 — 19. Juli 2026
 
 **🔴 🇩🇪 Auf btrfs konnte die Swap-Datei verloren gehen, wenn `btrfs-progs` fehlte.**
