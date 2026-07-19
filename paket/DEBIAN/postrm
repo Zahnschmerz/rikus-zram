@@ -1,0 +1,16 @@
+#!/bin/bash
+# Rikus Zram -- beim Entfernen aufraeumen.
+# WICHTIG: Eingerichtetes zram, die Swap-Datei und /etc/default/zramswap
+# bleiben UNANGETASTET. Das hat der Nutzer eingerichtet, nicht das Paket.
+set -u
+case "${1:-}" in
+  remove|purge)
+    for g in 16 22 24 32 48 64 128 256; do
+        rm -f "/usr/share/icons/hicolor/${g}x${g}/apps/rikus-zram.png"
+    done
+    rm -f /usr/share/icons/hicolor/scalable/apps/rikus-zram.svg
+    gtk-update-icon-cache -q -f /usr/share/icons/hicolor 2>/dev/null || true
+    update-desktop-database -q /usr/share/applications 2>/dev/null || true
+    ;;
+esac
+exit 0

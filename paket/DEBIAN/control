@@ -1,0 +1,34 @@
+Package: rikus-zram
+Version: 1.2
+Architecture: all
+Maintainer: Gilbert Rikus <gilbert@rikus.info>
+Section: utils
+Priority: optional
+Depends: python3, python3-gi, gir1.2-gtk-3.0, polkitd, pkexec, zram-tools, procps, init-system-helpers, apt
+Recommends: btrfs-progs
+Homepage: https://github.com/Zahnschmerz/rikus-zram
+Description: Set up zram, swappiness and swap files without a terminal
+ Rikus Zram turns Linux memory tuning into a window with sliders. It shows
+ what is currently running, recommends what fits this particular machine,
+ and applies changes only after you confirm them.
+ .
+ zram compresses rarely used data inside RAM instead of paging it out to a
+ slow disk - typically 3-4 times smaller. Configuring it normally means
+ typing commands and editing system files.
+ .
+ Unlike other tools, it can also set zram up on a machine that has none yet:
+ it installs the package, writes the settings, and switches the service on -
+ including a start script on systems without systemd, where zram-tools ships
+ only a systemd unit.
+ .
+ Features: live view of RAM, zram and swap with a plain-language verdict;
+ recommendations calculated from RAM size, disk type, filesystem and
+ hibernation setup; three sliders for zram size, swappiness and swap file;
+ a preview before any change; a backup of every file touched; verification
+ that the change took effect; and an undo button.
+ .
+ Works with systemd and with SysVinit, so also on MX Linux and antiX. On
+ btrfs the swap file is placed in its own subvolume so Timeshift can still
+ take snapshots. Swap partitions are never modified.
+ .
+ User interface in German or English, chosen automatically.

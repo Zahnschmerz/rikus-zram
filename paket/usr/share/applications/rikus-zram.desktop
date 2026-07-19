@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Rikus Zram
+GenericName=zram, swappiness und Swap-Dateien einstellen
+GenericName[en]=Set up zram, swappiness and swap files
+Comment[en]=Set up zram, swappiness and swap files — without a terminal
+Comment=zram, swappiness und Swap-Dateien einstellen — ohne Terminal
+Exec=/usr/bin/python3 /opt/rikus-zram/rikus-zram.py
+Icon=rikus-zram
+Terminal=false
+Categories=System;Monitor;
+Keywords=zram;swap;swappiness;Swapdatei;swapfile;RAM;Arbeitsspeicher;Speicher;memory;Kompression;
+StartupNotify=true

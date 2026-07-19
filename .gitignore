@@ -1,6 +1,10 @@
 __pycache__/
 *.pyc
-paket/
 alte-staende/
 *.deb
 *.sha256
+
+# Sicherungskopien gehoeren NIE ins Repo (Lehre 19.07.2026)
+*.bak
+*.bak-*
+*~

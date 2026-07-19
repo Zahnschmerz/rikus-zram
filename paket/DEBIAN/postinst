@@ -1,0 +1,23 @@
+#!/bin/bash
+# Rikus Zram -- nach der Installation: nur Symbol und Menueeintrag bekannt machen.
+# BEWUSST KEINE Paketverwaltung hier (kein apt/dpkg) -- das wuerde sich mit der
+# laufenden Installation verklemmen. Steht genauso in Rikus Mintshot.
+set -u
+
+# Symbol in die Systemgroessen einhaengen
+for g in 16 22 24 32 48 64 128 256; do
+    ziel="/usr/share/icons/hicolor/${g}x${g}/apps"
+    if [ -f "/opt/rikus-zram/daten/icon-${g}.png" ]; then
+        mkdir -p "$ziel"
+        install -m 0644 "/opt/rikus-zram/daten/icon-${g}.png" "$ziel/rikus-zram.png"
+    fi
+done
+if [ -f /opt/rikus-zram/daten/rikus-zram.svg ]; then
+    mkdir -p /usr/share/icons/hicolor/scalable/apps
+    install -m 0644 /opt/rikus-zram/daten/rikus-zram.svg \
+            /usr/share/icons/hicolor/scalable/apps/rikus-zram.svg
+fi
+
+gtk-update-icon-cache -q -f /usr/share/icons/hicolor 2>/dev/null || true
+update-desktop-database -q /usr/share/applications 2>/dev/null || true
+exit 0
