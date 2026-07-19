@@ -33,7 +33,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.2'
+VERSION = '1.3'
 
 
 # ---------------------------------------------------------------------------
@@ -1148,6 +1148,10 @@ class RikusZram(Gtk.Window):
     # -- Aufbau -------------------------------------------------------------
 
     def aufbauen(self):
+        # Beim „Neu messen" soll der Nutzer auf seinem Reiter bleiben.
+        # Beim ersten Aufbau steht das auf 0 = Uebersicht.
+        vorher = self.reiter.get_current_page()
+
         for seite in (self.seite_uebersicht, self.seite_regler):
             for kind in seite.get_children():
                 seite.remove(kind)
@@ -1172,6 +1176,14 @@ class RikusZram(Gtk.Window):
         self._seite2(ram, zram, swap, swp, platte, ruhe, empf)
 
         self.show_all()
+
+        # WICHTIG: show_all() gibt dem ersten bedienbaren Element den Fokus —
+        # das ist ein Schieberegler auf Seite 2. Ein Gtk.Notebook wechselt
+        # dann automatisch auf die Seite mit dem Fokus. Ohne diese Zeile
+        # startet das Programm also bei den Reglern statt bei der Uebersicht,
+        # obwohl die Anleitung „die erste Seite zeigt deinen Ist-Zustand"
+        # verspricht. Der Nutzer soll zuerst SEHEN, nicht gleich schieben.
+        self.reiter.set_current_page(vorher if vorher >= 0 else 0)
 
     def _seite1(self, ram, zram, swap, swp, einst, sys_, platte, ruhe,
                 ampel, urteil, hinweise):

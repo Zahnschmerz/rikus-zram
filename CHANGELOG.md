@@ -5,6 +5,20 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.3 — 19. Juli 2026
+
+**🇩🇪 Das Programm öffnete auf der falschen Seite.**
+
+- **Behoben: Beim Start stand das Fenster auf „Empfehlung & Regler" statt auf der Übersicht.** Anleitung und Webseite versprechen beide, dass die erste Seite den Ist-Zustand zeigt und dort nichts verändert wird — der Nutzer landete aber sofort bei den Schiebereglern. Ursache: Das Fenster gibt beim Öffnen dem ersten bedienbaren Element den Fokus, das ist ein Schieberegler auf der zweiten Seite, und die Reiterleiste folgt dem Fokus. Der Fehler steckte seit Fassung 1.0 drin.
+- Beim Knopf **„Neu messen"** bleibt man jetzt auf dem Reiter, auf dem man gerade ist.
+
+**🇬🇧 The program opened on the wrong page.**
+
+- **Fixed: on startup the window showed "Recommendation & sliders" instead of the overview.** Both the guide and the website promise that the first page shows your current state and changes nothing — but users landed straight on the sliders. Cause: on opening, the window gives focus to the first focusable widget, which is a slider on the second page, and the notebook follows the focus. Present since 1.0.
+- The **"Measure again"** button now keeps you on the tab you are on.
+
+---
+
 ## 1.2 — 19. Juli 2026
 
 **🇩🇪 Die Installationsanleitung war falsch. Das ist der Grund für diese Fassung.**
