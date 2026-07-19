@@ -33,7 +33,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.4'
+VERSION = '1.5'
 
 
 # ---------------------------------------------------------------------------
@@ -1168,8 +1168,14 @@ class RikusZram(Gtk.Window):
         empf = empfehlung_rechnen(ram, zram, swap, swp, platte, ruhe)
 
         # fuer den Uebernehmen-Knopf merken
+        # ⚠️ 'zram' MUSS hier stehen: _uebernehmen() reicht es an
+        # aenderungen_sammeln() weiter, damit erkannt wird, ob zram erst
+        # eingerichtet werden muss. Es fehlte von v1.1 bis v1.4 — dadurch
+        # brachen "Vorschau" und "Uebernehmen" mit KeyError ab, das Programm
+        # konnte NICHTS mehr aendern, sondern nur noch anzeigen.
         self.daten = {'sys': sys_, 'swp': swp, 'einst': einst, 'ram': ram,
-                      'swap': swap, 'platte': platte, 'ruhe': ruhe}
+                      'swap': swap, 'platte': platte, 'ruhe': ruhe,
+                      'zram': zram}
 
         self._seite1(ram, zram, swap, swp, einst, sys_, platte, ruhe,
                      ampel, urteil, hinweise)
@@ -1283,14 +1289,18 @@ class RikusZram(Gtk.Window):
                                f'Configured in <tt>{sicher(einst["pfad"])}</tt>:'))
             self._zeile(box, f'<tt>{w}</tt>', klein=True)
 
-        box = self._kasten(s, 'Dieses System')
+        box = self._kasten(s, t('Dieses System', 'This machine'))
         self._zeile(box, sicher(sys_['name']))
-        self._zeile(box, f'Startsystem: <b>{sicher(sys_["start"])}</b>')
-        art = ('SSD' if platte['ssd'] else 'drehende Festplatte') \
-            if platte['ssd'] is not None else 'unbekannt'
-        self._zeile(box, f'Systemplatte: <b>{art}</b> · Dateisystem '
-                         f'<b>{sicher(platte["dateisystem"])}</b> · noch frei '
-                         f'{sicher(platte["frei_text"])}')
+        self._zeile(box, t('Startsystem: <b>%s</b>', 'Init system: <b>%s</b>')
+                    % sicher(sys_['start']))
+        art = (t('SSD', 'SSD') if platte['ssd']
+               else t('drehende Festplatte', 'spinning disk')) \
+            if platte['ssd'] is not None else t('unbekannt', 'unknown')
+        self._zeile(box, t(
+            'Systemplatte: <b>%s</b> · Dateisystem <b>%s</b> · noch frei %s',
+            'System disk: <b>%s</b> · filesystem <b>%s</b> · %s still free')
+            % (art, sicher(platte['dateisystem']),
+               sicher(platte['frei_text'])))
 
         # --- Weg zur zweiten Seite -----------------------------------------
         # Bewusster Ablauf: erst schauen, was ist — dann per Knopf weiter zu

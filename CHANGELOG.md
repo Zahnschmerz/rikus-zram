@@ -5,6 +5,26 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.5 — 19. Juli 2026
+
+**🔴 🇩🇪 Wichtig: In den Fassungen 1.1 bis 1.4 funktionierten „Vorschau" und „Übernehmen" überhaupt nicht.**
+
+- **Behoben: Das Programm stürzte beim Übernehmen ab.** Beim Einbau der Funktion „zram einrichten" in Fassung 1.1 wurde ein Wert abgefragt, der nie bereitgestellt wurde (`KeyError: 'zram'`). Folge: **Ein Druck auf „Vorschau" oder „Übernehmen …" brach still ab — das Programm konnte den Rechner nur noch anzeigen, aber nichts mehr ändern.** Betroffen sind alle Fassungen von 1.1 bis 1.4. Fassung 1.0 war nicht betroffen.
+  **Wer 1.1 bis 1.4 benutzt hat: Es wurde nichts kaputtgemacht** — das Programm brach ab, *bevor* es irgendetwas geschrieben hat. Nur ändern ließ sich nichts.
+- **Behoben: Deutscher Text in der englischen Oberfläche.** Der Kasten „Dieses System" auf der ersten Seite war nicht übersetzt — englische Nutzer lasen dort „Startsystem" und „drehende Festplatte".
+
+**Geprüft:** In einer frischen virtuellen Maschine **ohne jedes zram** eingerichtet und nachgemessen: zram läuft danach (zstd, 100 % des RAM, als Swap eingehängt), die Einstellungsdatei ist angelegt, der Dienst ist eingeschaltet — **und nach einem Neustart ist zram von allein wieder da**.
+
+**🔴 🇬🇧 Important: in releases 1.1 through 1.4, "Preview" and "Apply" did not work at all.**
+
+- **Fixed: the program crashed on applying.** When the "set up zram" feature was added in 1.1, a value was read that was never provided (`KeyError: 'zram'`). As a result, **pressing "Preview" or "Apply …" aborted silently — the program could only display your machine, never change it.** All releases from 1.1 to 1.4 are affected; 1.0 was not.
+  **If you used 1.1–1.4: nothing was damaged** — the program aborted *before* writing anything. It simply could not apply.
+- **Fixed: German text in the English interface.** The "This machine" box on the first page was left untranslated.
+
+**Verified:** set up in a fresh virtual machine with **no zram at all** and measured afterwards: zram runs (zstd, 100 % of RAM, mounted as swap), the settings file is written, the service is enabled — **and after a reboot zram comes back on its own**.
+
+---
+
 ## 1.4 — 19. Juli 2026
 
 **🇩🇪 Auf älteren MX-Linux- und antiX-Fassungen ließ sich das Paket gar nicht installieren.**
