@@ -5,6 +5,22 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.4 — 19. Juli 2026
+
+**🇩🇪 Auf älteren MX-Linux- und antiX-Fassungen ließ sich das Paket gar nicht installieren.**
+
+- **Behoben: Abhängigkeit erfüllbar auf Debian 11.** Das Paket verlangte `polkitd` **und** `pkexec`. Diese beiden Pakete gibt es erst ab Debian 12 — auf Debian 11 (also **MX 21 und antiX 21**) steckt beides im Paket `policykit-1`. Dort brach `apt` mit „Abhängigkeit nicht erfüllbar" ab, obwohl das Programm ausdrücklich mit diesen Systemen wirbt. Jetzt steht dort eine Ausweichmöglichkeit (`polkitd | policykit-1`), sodass auf jedem System das passende Paket genommen wird.
+
+*Am Programm selbst hat sich nichts geändert.*
+
+**🇬🇧 On older MX Linux and antiX releases the package could not be installed at all.**
+
+- **Fixed: dependencies now resolvable on Debian 11.** The package required `polkitd` **and** `pkexec`. Those packages only exist from Debian 12 onwards — on Debian 11 (**MX 21 and antiX 21**) both live inside `policykit-1`, so `apt` aborted with an unsatisfiable dependency, even though the program explicitly advertises those systems. An alternative (`polkitd | policykit-1`) now picks whichever package the system has.
+
+*No change to the program itself.*
+
+---
+
 ## 1.3 — 19. Juli 2026
 
 **🇩🇪 Das Programm öffnete auf der falschen Seite.**

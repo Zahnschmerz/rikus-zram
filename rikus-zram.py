@@ -33,7 +33,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.3'
+VERSION = '1.4'
 
 
 # ---------------------------------------------------------------------------
