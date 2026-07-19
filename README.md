@@ -24,11 +24,21 @@ The catch: configuring this means typing commands and editing system files. Riku
 
 ## Install
 
+**No terminal needed, in three steps:**
+
+1. **[Download the file](https://github.com/Zahnschmerz/rikus-zram/releases/latest)** — the one ending in `.deb`. It lands in your **Downloads** folder.
+2. In your **Downloads** folder, **double-click** it → **"Install Package"** → enter your password.
+3. Start it: menu under *System* → **Rikus Zram**.
+
+<details>
+<summary>Prefer the terminal?</summary>
+
 ```
-sudo apt install ./rikus-zram_1.0_all.deb
+sudo apt install ~/Downloads/rikus-zram_*.deb
 ```
 
-Then find **Rikus Zram** in your menu under *System*.
+Works from any folder. The `*` stands for the version number, so the command stays correct for future releases. Use `apt install`, not `dpkg -i`.
+</details>
 
 **Runs on:** Debian, Ubuntu, Linux Mint, LMDE, MX Linux, antiX, Zorin, Pop!\_OS and relatives.
 **With systemd and with SysVinit** — it detects which one your system uses.
@@ -59,6 +69,7 @@ There are older attempts (VMM from 2013, SwapChanger, Swappolube, SwapManager, z
 ## Full guide
 
 → **[GUIDE.md](GUIDE.md)** — step by step for beginners, every technical term explained
+→ **[CHANGELOG.md](CHANGELOG.md)** — what changed in each release
 
 ---
 

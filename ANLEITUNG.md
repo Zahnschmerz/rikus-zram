@@ -36,15 +36,32 @@ Das Programm läuft mit **systemd** und mit **SysVinit** (also auch auf MX Linux
 
 ## 3. Installieren
 
-Lade `rikus-zram_1.0_all.deb` herunter und öffne es mit einem Doppelklick — dein System fragt nach dem Passwort und installiert es.
+Dafür brauchst du **kein Terminal**.
 
-Oder im Terminal:
+**Schritt 1 — Herunterladen.**
+Öffne die Download-Seite und klicke auf die Datei, die auf `.deb` endet:
+
+👉 **https://github.com/Zahnschmerz/rikus-zram/releases/latest**
+
+Sie landet in deinem Ordner **Downloads**.
+
+**Schritt 2 — Doppelklick.**
+Öffne den Ordner **Downloads** und klicke die heruntergeladene Datei **doppelt** an. Das Installationsprogramm deines Systems geht auf, du klickst auf **„Paket installieren"** und gibst dein Passwort ein.
+
+**Schritt 3 — Starten.**
+**„Rikus Zram"** steht jetzt im Startmenü unter *System*.
+
+### Lieber im Terminal?
+
+Dieser eine Befehl genügt — er funktioniert aus **jedem** Ordner heraus:
 
 ```
-sudo apt install ./rikus-zram_1.0_all.deb
+sudo apt install ~/Downloads/rikus-zram_*.deb
 ```
 
-Danach findest du **„Rikus Zram"** im Startmenü unter *System*.
+Das `*` steht für die Versionsnummer. So bleibt der Befehl auch dann richtig, wenn später eine neuere Fassung erscheint.
+
+⚠️ Bitte `apt install` benutzen, **nicht** `dpkg -i`: Nur `apt` holt fehlende Bausteine von selbst nach.
 
 ---
 
