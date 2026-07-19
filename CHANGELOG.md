@@ -5,6 +5,26 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.6 — 19. Juli 2026
+
+**🔴 🇩🇪 Auf btrfs konnte die Swap-Datei verloren gehen, wenn `btrfs-progs` fehlte.**
+
+- **Behoben: Datenverlust bei fehlendem `btrfs-progs`.** Beim Anlegen einer Swap-Datei auf btrfs löschte das Programm zuerst die alte Swap-Datei (abschalten, `fstab`-Eintrag entfernen, Datei löschen) und legte den btrfs-Bereich **erst danach** an. War das Paket `btrfs-progs` nicht installiert, brach es genau dazwischen ab — **der Rechner hatte hinterher weniger Swap als vorher, und der `fstab`-Eintrag war weg.** Jetzt wird **vorher** geprüft und mit einer klaren Meldung abgebrochen, **bevor irgendetwas angefasst wird**.
+- **Behoben: Die RAID-Warnung schlug still nicht an.** Auf einem btrfs über mehrere Platten kann Linux keine Swap-Datei betreiben. Die Warnung dafür fragte `btrfs` ab — fehlte das Werkzeug, kam eine leere Antwort zurück, und die Warnung blieb aus. „Werkzeug fehlt" war nicht von „kein RAID" zu unterscheiden.
+- **Abhängigkeiten vervollständigt:** `btrfs-progs` ist von *empfohlen* auf *erforderlich* hochgestuft, und **`mount` ist ergänzt** — daher kommen `swapon` und `swapoff`, und anders als `util-linux` ist es kein Grundbestandteil des Systems, muss also eingetragen sein.
+
+> ⚠️ **Wer 1.5 oder älter auf einem btrfs-System benutzt hat:** Bitte mit `swapon --show` nachsehen, ob die Swap-Datei noch da ist. Betroffen war nur, wer eine Swap-Datei auf btrfs anlegen ließ **ohne** installiertes `btrfs-progs`.
+
+**🔴 🇬🇧 On btrfs the swap file could be lost when `btrfs-progs` was missing.**
+
+- **Fixed: data loss when `btrfs-progs` is absent.** When creating a swap file on btrfs, the program removed the old swap file first (swapoff, drop the `fstab` line, delete the file) and created the btrfs subvolume **afterwards**. Without `btrfs-progs` it aborted exactly in between — **the machine ended up with less swap than before, and the `fstab` entry was gone.** It now checks **first** and stops with a clear message **before touching anything**.
+- **Fixed: the RAID warning silently never fired.** Linux cannot run a swap file on a btrfs spanning several disks. That warning queried `btrfs` — with the tool missing the answer was empty, so the warning never triggered. "Tool missing" was indistinguishable from "no RAID".
+- **Dependencies completed:** `btrfs-progs` moved from *recommended* to *required*, and **`mount` added** — it provides `swapon` and `swapoff`, and unlike `util-linux` it is not an essential system component, so it has to be declared.
+
+> ⚠️ **If you used 1.5 or older on a btrfs system:** please check with `swapon --show` whether your swap file is still there. Only affected: creating a swap file on btrfs **without** `btrfs-progs` installed.
+
+---
+
 ## 1.5 — 19. Juli 2026
 
 **🔴 🇩🇪 Wichtig: In den Fassungen 1.1 bis 1.4 funktionierten „Vorschau" und „Übernehmen" überhaupt nicht.**

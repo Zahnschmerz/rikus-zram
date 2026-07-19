@@ -33,7 +33,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.5'
+VERSION = '1.6'
 
 
 # ---------------------------------------------------------------------------
@@ -767,6 +767,26 @@ def swap_pruefen(ziel_gb, swap, platte):
     ist_gb = gb_gerundet(ist_bytes)
     if ziel_gb == ist_gb:
         return None
+
+    # 0) Auf btrfs wird das Werkzeug `btrfs` gebraucht. FEHLT es, darf hier
+    #    NICHTS weiterlaufen — sonst richtet das Root-Skript Schaden an:
+    #    Es loescht die alte Swap-Datei ZUERST (swapoff, fstab-Zeile raus,
+    #    rm -f) und legt den btrfs-Bereich ERST DANACH an. Fehlt `btrfs`,
+    #    scheitern beide Zweige, `set -e` bricht ab, und mkswap/swapon werden
+    #    nie erreicht. Der Nutzer haette hinterher WENIGER Swap als vorher.
+    #    Zweiter Grund: Ohne diese Pruefung koennte (4) still danebengreifen —
+    #    _lauf() liefert bei fehlendem Werkzeug '', und '' enthaelt 0x devid,
+    #    die RAID-Warnung wuerde also nie anschlagen.
+    if (platte['dateisystem'] == 'btrfs' and ziel_gb > 0
+            and not _werkzeug('btrfs')):
+        return t(
+            'Für eine Swap-Datei auf btrfs wird das Paket btrfs-progs '
+            'gebraucht — auf diesem Rechner fehlt es. Bitte erst '
+            'installieren, dann noch einmal versuchen.\n\n'
+            'Es wurde nichts verändert.',
+            'A swap file on btrfs needs the package btrfs-progs — it '
+            'is missing on this machine. Please install it first, then try '
+            'again.\n\nNothing has been changed.')
 
     # 1) Ist gerade etwas ausgelagert, das zurueck muesste?
     benutzt = sum(x['benutzt'] for x in swap if not x['ist_zram'])
