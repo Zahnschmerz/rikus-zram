@@ -33,13 +33,12 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.1'
+VERSION = '1.2'
 
 
 # ---------------------------------------------------------------------------
 # SPRACHE — deutsch oder englisch, automatisch nach Systemeinstellung
-# (Muster von Rikus Mintshot; Gilbert 18.07.: „vergiss nicht deutsch und
-#  englisch die app wie rikus mintshot. das gleiche prinzip")
+# (gleiches Verfahren wie in Rikus Mintshot)
 # ---------------------------------------------------------------------------
 
 def _systemsprache():
@@ -99,16 +98,12 @@ def _lies(pfad):
 def gb_gerundet(bytes_):
     """Bytes in ganze GB — GERUNDET, niemals abgeschnitten.
 
-    🔴 Gilberts Fund vom 18.07.2026: „ich habe gesagt du hast unter punkt 3
-    empfohlen 2 gb stehen. natürlich macht das dann jeder, aber letztendlich
-    ging er auf 1 zurück. das ist irreführend!"
-
-    Ursache: Eine 2-GB-Auslagerungsdatei ist auf der Platte exakt
-    2.147.483.648 Bytes gross, meldet sich in /proc/swaps aber mit
-    2.147.479.552 Bytes — die ersten 4 KB sind der Kopf der Datei und nicht
-    nutzbar. Das sind 1,999996 GB. Mit int() wird daraus 1.
-    Folge damals: Die Anzeige sprang auf 1 zurueck UND das Programm hielt die
-    Reserve fuer zu klein, weshalb Gilbert zweimal uebernehmen musste.
+    Wichtig, sonst wird die Anzeige irrefuehrend: Eine 2-GB-Auslagerungsdatei
+    ist auf der Platte exakt 2.147.483.648 Bytes gross, meldet sich in
+    /proc/swaps aber mit 2.147.479.552 Bytes — die ersten 4 KB sind der Kopf
+    der Datei und nicht nutzbar. Das sind 1,999996 GB. Mit int() wird daraus 1.
+    Folge: Die Anzeige spraenge nach dem Uebernehmen von 2 auf 1 zurueck, und
+    das Programm hielte die Reserve faelschlich fuer zu klein.
     """
     return round(bytes_ / 1024**3)
 
@@ -1286,8 +1281,8 @@ class RikusZram(Gtk.Window):
                          f'{sicher(platte["frei_text"])}')
 
         # --- Weg zur zweiten Seite -----------------------------------------
-        # Gilberts Ablauf (18.07.): erst schauen, was ist — dann per Knopf
-        # weiter zu den Einstellungen. Kein Nebeneinander zweier Reiter.
+        # Bewusster Ablauf: erst schauen, was ist — dann per Knopf weiter zu
+        # den Einstellungen. Kein Nebeneinander zweier Reiter.
         weiter = self._kasten(s, t('Und weiter?', 'What next?'))
         self._zeile(weiter, t(
             'Oben steht, <b>was auf deinem Rechner läuft</b>. Auf der nächsten '
@@ -1392,9 +1387,8 @@ class RikusZram(Gtk.Window):
         self._zeile(box, f'💡 {e["swappiness_warum"]}', klein=True)
 
         # --- Reserve auf der Platte ---
-        # Seit v0.4 scharf. Lehre vom 18.07.: Ein Regler, den man bewegen kann,
-        # VERSPRICHT etwas — was noch nicht geht, wird gesperrt, nicht mit
-        # Kleingedrucktem erklaert.
+        # Grundsatz: Ein Regler, den man bewegen kann, VERSPRICHT etwas — was
+        # nicht geht, wird gesperrt und nicht mit Kleingedrucktem erklaert.
         box = self._kasten(s, t('3. Swap-Datei (Auslagerungsdatei)',
                                 '3. Swap file'))
         ist_swap_gb = gb_gerundet(sum(x['groesse'] for x in swap
