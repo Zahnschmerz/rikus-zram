@@ -5,6 +5,30 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.9 — 21. Juli 2026
+
+**🇩🇪 Der Ruhezustand wird jetzt erklärt, statt nur genannt.**
+
+- **Auf der ersten Seite** stand bisher nur „Dein Rechner könnte den Ruhezustand (hibernate), er ist aber nicht eingerichtet". Wer den Begriff nicht kennt, weiß damit nichts anzufangen — und er wird oft mit der Bereitschaft verwechselt, in die ein Laptop beim Zuklappen geht. Jetzt steht dort, **was** dabei passiert (der ganze Arbeitsspeicher wandert auf die Platte, der Rechner geht komplett aus), **worin der Unterschied zur Bereitschaft** liegt, und **welche zwei Dinge** nötig wären.
+- **Die entscheidende Zahl fehlte.** Es hieß „eine Swap-Datei wäre nötig", aber nicht wie groß. Jetzt wird die konkrete Größe für **diesen** Rechner genannt — bei 16 GB Arbeitsspeicher also mindestens 16 GB — zusammen mit der aktuell vorhandenen Größe.
+- **Der zweite nötige Schritt wurde verschwiegen.** Selbst mit ausreichend großer Datei funktioniert der Ruhezustand nicht ohne den `resume=`-Eintrag in der Startkonfiguration. **Dieses Programm setzt ihn bewusst nicht** — es fasst den Startvorgang nicht an. Wer nur den Regler hochschob, stand danach ratlos da. Jetzt steht es klar dabei.
+- **Beim Swap-Regler** erscheint zusätzlich die Marke „ab X GB wäre der Ruhezustand möglich" — mit demselben Vorbehalt.
+- **Beide Anleitungen** haben statt drei Zeilen jetzt einen vollständigen Abschnitt mit einer Tabelle Herunterfahren / Bereitschaft / Ruhezustand und dem Selbst-Prüfbefehl `cat /sys/power/state`.
+
+*Am Programm selbst hat sich nichts geändert — nur an dem, was es erklärt.*
+
+**🇬🇧 Hibernation is now explained rather than merely named.**
+
+- **The first page** used to say only "This machine could hibernate, but it is not set up". Anyone unfamiliar with the term learns nothing from that — and it is easily confused with the standby a laptop enters when you close the lid. It now says **what** happens (the whole of RAM goes to disk, the machine switches off completely), **how it differs from standby**, and **which two things** would be required.
+- **The decisive number was missing.** It said "would need a swap file", but not how large. The concrete size for **this** machine is now given — with 16 GB of RAM, at least 16 GB — alongside the size currently present.
+- **The second required step was left out.** Even with a large enough file, hibernation does not work without the `resume=` entry in the boot configuration. **This program deliberately does not set it** — it does not touch the boot process. Anyone who merely raised the slider was left puzzled. That is now stated plainly.
+- **The swap slider** additionally shows "from X GB up, hibernation would be possible" — with the same caveat.
+- **Both guides** now have a full section with a shutdown / standby / hibernation table and the self-check command `cat /sys/power/state`, instead of three lines.
+
+*No change to the program itself — only to what it explains.*
+
+---
+
 ## 1.8 — 21. Juli 2026
 
 **🔴 🇩🇪 Wichtig: Bis Fassung 1.7 konnte beim Ändern der Swap-Datei eine ZWEITE angelegt werden, statt die vorhandene zu ersetzen.**

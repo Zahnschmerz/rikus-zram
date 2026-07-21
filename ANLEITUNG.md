@@ -199,8 +199,32 @@ Wenn dein Rechner bei vielen offenen Programmen zäh wird: ja. zram verschafft d
 **Warum zeigt mir ein anderes Programm andere Zahlen?**
 Eine 2-GB-Swap-Datei meldet sich dem System als 1,999996 GB — die ersten Kilobyte sind ein interner Kopf und nicht nutzbar. Manche Programme schneiden das auf „1 GB" ab. Rikus Zram rundet auf **2 GB**, weil das die Größe ist, die du eingestellt hast.
 
-**Was ist mit dem Ruhezustand?**
-Der schreibt den gesamten Arbeitsspeicher auf die Festplatte. Dafür brauchst du eine Swap-**Datei oder -Partition mindestens in RAM-Größe**. zram kann das nicht — es liegt ja selbst im Arbeitsspeicher, der beim Ausschalten leer wird.
+**Was ist der Ruhezustand überhaupt — und brauche ich ihn?**
+
+Es gibt drei Arten, den Rechner „auszumachen":
+
+| | Was passiert | Wieder da in | Strom |
+|---|---|---|---|
+| **Herunterfahren** | alles wird geschlossen | 30–60 s (alles neu öffnen) | keiner |
+| **Bereitschaft** (Standby) | alles bleibt offen im Arbeitsspeicher | 1–2 Sekunden | ein wenig — **bei leerem Akku ist alles weg** |
+| **Ruhezustand** (Hibernate) | der Arbeitsspeicher wird auf die Platte geschrieben | 15–30 Sekunden | **gar keiner** — alles bleibt erhalten |
+
+Wenn du deinen Laptop zuklappst, geht er normalerweise in **Bereitschaft**. Der **Ruhezustand** ist etwas anderes: Er speichert ein vollständiges Abbild deines Arbeitsspeichers auf die Festplatte und schaltet den Rechner **ganz** aus. Beim nächsten Einschalten ist alles wieder offen wie vorher — dieselben Programme, dieselbe Stelle im Text.
+
+**Dafür brauchst du zwei Dinge:**
+
+1. **Eine Swap-Datei mindestens so groß wie dein Arbeitsspeicher.** Bei 16 GB RAM also mindestens 16 GB. Ist sie kleiner, lehnt Linux den Ruhezustand von vornherein ab. Die Größe stellst du mit Regler 3 ein — das Programm zeigt dir an, ab welchem Wert es reichen würde.
+2. **Einen Eintrag in der Startkonfiguration** (`resume=`), damit der Rechner beim Einschalten weiß, wo das Abbild liegt. **Diesen Schritt macht Rikus Zram nicht** — er greift in den Startvorgang ein, und das ist bewusst außerhalb dessen, was dieses Programm anfasst.
+
+**zram hilft hier nicht.** Es liegt selbst im Arbeitsspeicher und ist beim Ausschalten mit weg — man kann das Abbild nicht in dem Raum lagern, den man gerade abbildet.
+
+**Brauchst du ihn?** Für den Alltag reicht die Bereitschaft völlig und ist zehnmal schneller. Der Ruhezustand lohnt sich, wenn du den Rechner tagelang liegen lässt und trotzdem alles offen behalten willst, oder wenn du oft mit leerem Akku dastehst.
+
+**Ob dein Rechner ihn kann**, steht auf der ersten Seite unter „Dieses System". Prüfen kannst du es auch selbst:
+```
+cat /sys/power/state
+```
+Steht dort `disk`, ist der Ruhezustand technisch möglich.
 
 **Kann ich es wieder loswerden?**
 `sudo apt remove rikus-zram`. Deine Einstellungen und eine angelegte Swap-Datei bleiben erhalten — das Programm räumt dir nichts weg, was du eingerichtet hast.

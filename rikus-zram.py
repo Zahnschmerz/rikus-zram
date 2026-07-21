@@ -33,7 +33,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.8'
+VERSION = '1.9'
 
 
 # ---------------------------------------------------------------------------
@@ -1312,19 +1312,58 @@ class RikusZram(Gtk.Window):
                     f'· used {groesse(x["benutzt"])} · priority {x["prio"]}'))
         else:
             self._zeile(box, t('Keine vorhanden.', 'None present.'))
+        # --- Ruhezustand: erklaeren, nicht nur benennen ---------------------
+        # Gilbert 21.07.2026: „was bedeutet den ruhestand nutzen?" — der
+        # Begriff stand vorher nackt da, ohne die noetige GROESSE und ohne den
+        # Hinweis, dass die Datei allein nicht reicht. Wer daraufhin nur den
+        # Regler hochschiebt, wundert sich, dass es trotzdem nicht geht.
+        noetig_gb = max(1, int(ram['gesamt'] / 1024**3) + 1)
+        ist_swapdatei_gb = gb_gerundet(
+            sum(x['groesse'] for x in swap
+                if not x['ist_zram'] and x.get('art') == 'file'))
         if ruhe['eingerichtet']:
             self._zeile(box, t(
-                'Dein Ruhezustand (hibernate) ist eingerichtet — dafür wird '
-                'eine Swap-Datei in Größe des Arbeitsspeichers gebraucht.',
-                'Hibernation is set up — that needs a swap file the size of '
-                'your RAM.'), klein=True)
+                f'<b>Ruhezustand (Hibernate): eingerichtet.</b> Dabei schreibt '
+                f'der Rechner den ganzen Arbeitsspeicher auf die Platte und '
+                f'schaltet sich komplett aus — nach dem Einschalten ist alles '
+                f'wieder offen wie vorher. Dafür muss die Swap-Datei '
+                f'mindestens {noetig_gb} GB groß sein (du hast '
+                f'{ist_swapdatei_gb} GB).',
+                f'<b>Hibernation: configured.</b> The computer writes the '
+                f'entire RAM to disk and switches off completely — after '
+                f'switching on, everything is open again as before. The swap '
+                f'file has to be at least {noetig_gb} GB for that (you have '
+                f'{ist_swapdatei_gb} GB).'), klein=True)
         elif ruhe['kann']:
             self._zeile(box, t(
-                'Dein Rechner könnte den Ruhezustand (hibernate), er ist aber '
-                'nicht eingerichtet. Dafür wäre eine Swap-Datei nötig — zram '
-                'kann das nicht leisten.',
-                'This machine could hibernate, but it is not set up. That '
-                'would need a swap file — zram cannot provide it.'), klein=True)
+                f'<b>Ruhezustand (Hibernate): nicht eingerichtet.</b> Damit '
+                f'würde der Rechner den ganzen Arbeitsspeicher auf die Platte '
+                f'schreiben und sich <i>komplett</i> ausschalten — kein Strom, '
+                f'und nach dem Einschalten ist alles wieder offen wie vorher. '
+                f'Das ist etwas anderes als die Bereitschaft, in die dein '
+                f'Laptop beim Zuklappen geht: die ist schneller, braucht aber '
+                f'weiter Strom, und bei leerem Akku ist alles weg.',
+                f'<b>Hibernation: not configured.</b> It would write the entire '
+                f'RAM to disk and switch the machine off <i>completely</i> — no '
+                f'power at all, and after switching on everything is open again '
+                f'as before. That is different from the standby your laptop '
+                f'enters when you close the lid: faster, but it keeps drawing '
+                f'power, and when the battery runs out everything is lost.'),
+                klein=True)
+            self._zeile(box, t(
+                f'Wenn du ihn nutzen willst, brauchst du <b>zwei</b> Dinge: '
+                f'eine Swap-Datei von <b>mindestens {noetig_gb} GB</b> '
+                f'(du hast {ist_swapdatei_gb} GB — auf der nächsten Seite '
+                f'einstellbar) <b>und</b> einen Eintrag in der '
+                f'Startkonfiguration, den <b>dieses Programm nicht setzt</b>. '
+                f'zram hilft hier nicht: Es liegt im Arbeitsspeicher und ist '
+                f'beim Ausschalten mit weg.',
+                f'To use it you need <b>two</b> things: a swap file of '
+                f'<b>at least {noetig_gb} GB</b> (you have {ist_swapdatei_gb} '
+                f'GB — adjustable on the next page) <b>and</b> an entry in the '
+                f'boot configuration that <b>this program does not set</b>. '
+                f'zram cannot help here: it lives in RAM and is gone when the '
+                f'power goes off.'), klein=True)
 
         box = self._kasten(s, t('Einstellungen', 'Settings'))
         if swp['laufend'] is not None:
@@ -1482,6 +1521,23 @@ class RikusZram(Gtk.Window):
             box, 0, max(int(gb) + 4, 16), ist_swap_gb, e['swap_gb'], 1,
             swap_text)
         self._zeile(box, f'💡 {e["swap_warum"]}', klein=True)
+        # Der Ruhezustand ist der EINZIGE Grund fuer eine sehr grosse Datei —
+        # dann aber zwingend >= RAM. Ohne diese Zahl kann niemand entscheiden.
+        if ruhe['kann'] and not ruhe['eingerichtet']:
+            noetig = max(1, int(gb) + 1)
+            self._zeile(box, t(
+                f'🌙 <b>Ab {noetig} GB wäre der Ruhezustand möglich</b> '
+                f'(Rechner ganz aus, alles bleibt offen). Darunter lehnt Linux '
+                f'ihn ab, weil der Arbeitsspeicher nicht hineinpasst. '
+                f'⚠️ Die Größe allein genügt aber nicht — es fehlt dann noch '
+                f'ein Eintrag in der Startkonfiguration, den dieses Programm '
+                f'nicht setzt.',
+                f'🌙 <b>From {noetig} GB up, hibernation would be possible</b> '
+                f'(machine fully off, everything stays open). Below that Linux '
+                f'refuses it, because RAM would not fit. ⚠️ The size alone is '
+                f'not enough though — an entry in the boot configuration is '
+                f'still missing, and this program does not set it.'),
+                klein=True)
         if platte['dateisystem'] == 'btrfs':
             self._zeile(box, t(
                 f'🛡️ <b>Auf deinem Dateisystem (btrfs) mit Vorsicht:</b> Die '

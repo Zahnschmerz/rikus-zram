@@ -199,8 +199,32 @@ If your machine gets sluggish with many programs open: yes. zram gives you notic
 **Why does another tool show me different numbers?**
 A 2 GB swap file reports itself to the system as 1.999996 GB — the first few kilobytes are an internal header and not usable. Some tools truncate that to "1 GB". Rikus Zram rounds to **2 GB**, because that is the size you set.
 
-**What about hibernation?**
-It writes your entire RAM to disk. For that you need a swap **file or partition at least the size of your RAM**. zram cannot do it — it lives in RAM itself, which is empty after power off.
+**What is hibernation, and do I need it?**
+
+There are three ways to "turn off" a computer:
+
+| | What happens | Back in | Power |
+|---|---|---|---|
+| **Shut down** | everything is closed | 30–60 s (reopen everything) | none |
+| **Standby** (suspend) | everything stays open in RAM | 1–2 seconds | a little — **when the battery dies, it is all gone** |
+| **Hibernation** | RAM is written to disk | 15–30 seconds | **none at all** — everything is kept |
+
+Closing your laptop lid normally puts it into **standby**. **Hibernation** is something else: it saves a complete image of your RAM to disk and switches the machine off **entirely**. On the next start everything is open again as before — same programs, same position in the text.
+
+**You need two things for it:**
+
+1. **A swap file at least the size of your RAM.** With 16 GB of RAM, at least 16 GB. If it is smaller, Linux refuses hibernation outright. Slider 3 sets the size — the program tells you from which value it would be enough.
+2. **An entry in the boot configuration** (`resume=`), so the machine knows where the image is on startup. **Rikus Zram does not do this step** — it touches the boot process, which is deliberately outside what this program changes.
+
+**zram cannot help here.** It lives in RAM itself and is gone when the power goes off — you cannot store the image inside the room you are imaging.
+
+**Do you need it?** For everyday use standby is plenty and ten times faster. Hibernation pays off if you leave the machine untouched for days and still want everything open, or if you often run out of battery.
+
+**Whether your machine can do it** is shown on the first page under "This machine". You can also check yourself:
+```
+cat /sys/power/state
+```
+If `disk` appears there, hibernation is technically possible.
 
 **Can I remove it again?**
 `sudo apt remove rikus-zram`. Your settings and any swap file you created stay in place — the program does not take away what you set up.
