@@ -5,6 +5,28 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.8 — 21. Juli 2026
+
+**🔴 🇩🇪 Wichtig: Bis Fassung 1.7 konnte beim Ändern der Swap-Datei eine ZWEITE angelegt werden, statt die vorhandene zu ersetzen.**
+
+- **Behoben: Das Programm suchte die vorhandene Swap-Datei am falschen Ort.** Es nahm an, sie liege unter `/swap/swapfile` — dort, wo es selbst eine anlegen würde. Auf Linux Mint (und den meisten anderen Systemen) liegt sie aber unter **`/swapfile`**. Folge: Abschalten, Eintrag entfernen und Löschen liefen ins Leere, und danach wurde eine **zusätzliche** Datei angelegt. Wer 2 GB hatte und 4 GB einstellte, bekam **2 GB + 4 GB gleichzeitig** — und beim nächsten Öffnen rechnete das Programm mit der Summe weiter.
+  Jetzt wird die Datei genommen, die das Programm **tatsächlich gemessen** hat (aus `/proc/swaps`). Auch mehrere vorhandene Dateien werden alle sauber entfernt.
+- **Neu abgesichert: Swap-Partitionen werden nachweislich nie angefasst.** Das Programm versprach das schon immer, prüfte es aber nicht. Jetzt werden ausschließlich Einträge vom Typ *file* entfernt; eine Swap-**Partition** bleibt unberührt, und die Vorschau sagt das ausdrücklich.
+- Die Vorschau nennt jetzt den **echten Pfad** der Datei, die entfernt wird — nicht mehr einen angenommenen.
+
+> ⚠️ **Wer 1.7 oder älter benutzt und die Swap-Datei geändert hat:** Bitte mit `swapon --show` nachsehen. Stehen dort **zwei** Dateien, ist die überflüssige gefahrlos zu entfernen — abschalten, Zeile aus `/etc/fstab` nehmen, Datei löschen.
+
+**🔴 🇬🇧 Important: up to release 1.7, changing the swap file could create a SECOND one instead of replacing the existing one.**
+
+- **Fixed: the program looked for the existing swap file in the wrong place.** It assumed `/swap/swapfile` — where it would create one itself. On Linux Mint (and most other systems) it lives at **`/swapfile`**. So switching off, removing the fstab line and deleting all ran into nothing, and an **additional** file was created. Someone with 2 GB who set 4 GB ended up with **2 GB + 4 GB at once** — and on the next start the program carried on from the sum.
+  It now uses the file it has **actually measured** (from `/proc/swaps`). Several existing files are all removed properly.
+- **Newly guaranteed: swap partitions are provably never touched.** The program always promised this but never checked. Only entries of type *file* are removed now; a swap **partition** is left alone, and the preview says so explicitly.
+- The preview now names the **real path** of the file being removed, not an assumed one.
+
+> ⚠️ **If you use 1.7 or older and changed the swap file:** please check with `swapon --show`. If **two** files are listed, the surplus one can safely be removed — switch it off, drop its line from `/etc/fstab`, delete the file.
+
+---
+
 ## 1.7 — 19. Juli 2026
 
 **🔴 🇩🇪 Der Terminal-Befehl aus der Anleitung fand die heruntergeladene Datei nicht.**

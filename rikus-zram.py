@@ -33,7 +33,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.7'
+VERSION = '1.8'
 
 
 # ---------------------------------------------------------------------------
@@ -669,16 +669,40 @@ def swap_aenderung(ziel_gb, swap, platte, datum):
     ist_btrfs = platte['dateisystem'] == 'btrfs'
     schritte = []
 
+    # ⚠️ Die vorhandenen Swap-DATEIEN kommen aus der MESSUNG (/proc/swaps),
+    # NICHT aus der Annahme, sie laegen unter SWAP_DATEI.
+    # Gilbert 21.07.2026: Auf Linux Mint liegt die Datei standardmaessig unter
+    # /swapfile. Der frueher fest verdrahtete Pfad /swap/swapfile traf sie nicht
+    # — swapoff/sed/rm liefen ins Leere, danach wurde eine ZWEITE Datei
+    # angelegt. Ergebnis bei ihm: /swapfile 2 GB + /swap/swapfile 15 GB
+    # gleichzeitig, und beim naechsten Lauf rechnete das Programm mit der
+    # Summe weiter. Der Fehler war unsichtbar, solange man nur auf Systemen
+    # OHNE vorhandene Swap-Datei testet.
+    # 🛑 'partition' wird bewusst NIE angefasst — dort liegen Daten, und das
+    # Programm verspricht das ausdruecklich in der Anleitung.
+    vorhandene = [x for x in swap
+                  if not x['ist_zram'] and x.get('art') == 'file' and x.get('name')]
+    partitionen = [x for x in swap
+                   if not x['ist_zram'] and x.get('art') != 'file']
+
     # --- vorhandene Reserve abschalten und entfernen ---
-    if ist_gb > 0:
-        weg = [
-            f'swapoff {SWAP_DATEI} 2>/dev/null || true',
-            f'cp -a /etc/fstab "/etc/fstab.bak-{STEMPEL}-{datum}"',
-            f'sed -i "\\|^{SWAP_DATEI}|d" /etc/fstab',
-            f'rm -f {SWAP_DATEI}',
-        ]
-        text = t(f'die vorhandene Swap-Datei ({ist_gb} GB) abschalten und entfernen',
-                 f'switch off and remove the existing swap file ({ist_gb} GB)')
+    if vorhandene:
+        weg = [f'cp -a /etc/fstab "/etc/fstab.bak-{STEMPEL}-{datum}"']
+        for eintrag in vorhandene:
+            pfad = eintrag['name']
+            weg += [
+                f'swapoff {pfad} 2>/dev/null || true',
+                f'sed -i "\\|^{pfad}[[:space:]]|d" /etc/fstab',
+                f'rm -f {pfad}',
+            ]
+        namen = ', '.join(x['name'] for x in vorhandene)
+        text = t(f'die vorhandene Swap-Datei {namen} ({ist_gb} GB) abschalten '
+                 f'und entfernen',
+                 f'switch off and remove the existing swap file {namen} '
+                 f'({ist_gb} GB)')
+        if partitionen:
+            text += t(' — deine Swap-Partition bleibt unangetastet',
+                      ' — your swap partition is left untouched')
         if benutzt > 0:
             text += t(f' — ⚠️ ACHTUNG: davon sind gerade {groesse(benutzt)} in '
                       'Benutzung, die müssen zurück in den Arbeitsspeicher',
@@ -716,7 +740,11 @@ def swap_aenderung(ziel_gb, swap, platte, datum):
             f'>> /etc/fstab',
             f'swapon --priority 10 {SWAP_DATEI}',
         ]
-        if ist_gb == 0:
+        # Sicherung nur, wenn sie nicht schon im Aufraeum-Schritt lief.
+        # ⚠️ Nicht an `ist_gb == 0` haengen: Wer eine Swap-PARTITION hat, hat
+        # ist_gb > 0, aber es gibt keinen Aufraeum-Schritt (Partitionen werden
+        # nie angefasst) — dann fehlte die Sicherung.
+        if not vorhandene:
             neu.insert(0, f'cp -a /etc/fstab "/etc/fstab.bak-{STEMPEL}-{datum}"')
         text = t(f'eine Swap-Datei von {ziel_gb} GB anlegen unter {SWAP_DATEI}, '
                  f'dauerhaft eintragen und einschalten (Priorität 10 — zram '
