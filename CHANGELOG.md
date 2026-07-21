@@ -5,6 +5,26 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.10 — 21. Juli 2026
+
+**🇩🇪 Das Programm sagt jetzt Bescheid, wenn es eine neuere Fassung gibt.**
+
+- **Neu: Update-Hinweis.** Beim Start schaut das Programm einmal nach, ob auf GitHub eine neuere Fassung liegt. Wenn ja, erscheint unter dem Titel eine kleine grüne Zeile: „🔔 Version X ist verfügbar — ansehen", mit Link zur Download-Seite. **Es wird nichts heruntergeladen und nichts installiert** — nur der Hinweis.
+- **Warum das nötig war:** Das Programm kommt als `.deb` über GitHub und ist damit *keine* apt-Quelle. `apt update` erfährt also nie von einer neuen Fassung — man bliebe auf einer alten sitzen, ohne es zu merken.
+- **Diese Fassung ist gleich die Nagelprobe:** Von 1.9 auf **1.10** ist genau der Sprung, bei dem eine schlampige Prüfung versagt — als Text gelesen ist „1.10" *kleiner* als „1.9", der Hinweis bliebe ab jetzt für immer aus. Hier werden Versionen in Zahlen zerlegt und als Zahlen verglichen; der Fall ist eigens geprüft.
+- **Was der Hinweis NICHT tut:** Er hält das Fenster nicht auf (eigener Hintergrund-Vorgang mit 4-Sekunden-Grenze). Er stürzt nicht ab (schlägt etwas fehl, bleibt die Zeile einfach weg). Er braucht **kein zusätzliches Paket**. Und er übersteht den Neuaufbau des Fensters nach einer Änderung — eigens nachgemessen.
+- **Abschaltbar:** `touch ~/.config/rikus-zram/kein-update-hinweis` — dann fragt das Programm gar nicht mehr nach. Steht in beiden Anleitungen.
+
+**🇬🇧 The program now tells you when a newer version is out.**
+
+- **New: update hint.** At startup the program checks once whether a newer release exists on GitHub. If so, a small green line appears below the title: „🔔 Version X is available — view", linking to the download page. **Nothing is downloaded and nothing is installed.**
+- **Why:** The program ships as a `.deb` via GitHub and is therefore *not* an apt source, so `apt update` never learns about newer versions.
+- **This release is the acid test:** Going from 1.9 to **1.10** is exactly the step where a sloppy check fails — read as text, „1.10" is *smaller* than „1.9". Here versions are split into numbers and compared as numbers; that case is explicitly tested.
+- **What it does not do:** It never blocks the window (background check, 4-second limit), never crashes (on failure the line simply stays hidden), needs **no extra package**, and survives the window rebuild after a change — verified.
+- **Can be switched off:** `touch ~/.config/rikus-zram/kein-update-hinweis`. Documented in both guides.
+
+---
+
 ## 1.9 — 21. Juli 2026
 
 **🇩🇪 Der Ruhezustand wird jetzt erklärt, statt nur genannt.**

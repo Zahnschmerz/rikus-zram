@@ -234,7 +234,30 @@ Die Sicherungen liegen neben den Originaldateien (`*.bak-rikuszram-*`). Der Rüc
 
 ---
 
-## Hilfe und Rückmeldungen
+## 10. Der Update-Hinweis
+
+Ab Fassung 1.10 schaut das Programm beim Start einmal nach, ob es eine neuere Fassung
+gibt. Wenn ja, erscheint unter dem Titel eine kleine grüne Zeile mit einem Link zur
+Download-Seite. **Mehr passiert nicht** — es wird nichts heruntergeladen und nichts
+installiert. Ohne Internet erscheint die Zeile einfach nicht; das Fenster geht wie
+gewohnt sofort auf.
+
+**Warum es das gibt:** Das Programm kommt als `.deb` von GitHub und ist damit *keine*
+apt-Quelle. `apt update` erfährt also nie davon, dass es etwas Neueres gibt — man
+bliebe ohne Hinweis auf einer alten Fassung sitzen, ohne es zu merken.
+
+**Abschalten** — eine einzige Zeile im Terminal:
+
+```
+touch ~/.config/rikus-zram/kein-update-hinweis
+```
+
+Danach fragt das Programm gar nicht mehr nach. Wieder einschalten:
+
+```
+rm ~/.config/rikus-zram/kein-update-hinweis
+```
+
 
 **Webseite:** [zram.rikus.info](https://zram.rikus.info)
 **Quelltext und Fehlermeldungen:** [github.com/Zahnschmerz/rikus-zram](https://github.com/Zahnschmerz/rikus-zram)
@@ -243,3 +266,5 @@ Fehler gefunden oder eine Idee? Melde sie gern — das Programm lebt von Rückme
 
 **Rikus Zram** — von Gilbert Rikus · GPL-3.0
 Schwesterprogramm: **Rikus Mintshot** ([snapshot.rikus.info](https://snapshot.rikus.info)) — baut mit einem Klick einen bootfähigen Klon deines Linux-Mint-Systems.
+
+## Hilfe und Rückmeldungen

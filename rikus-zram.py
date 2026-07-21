@@ -27,13 +27,68 @@ heraus enthaelt der Suchpfad kein /sbin und kein /usr/sbin — ein blosses
 import os
 import re
 import glob
+import json
+import threading
 import subprocess
 
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.9'
+VERSION = '1.10'
+
+
+# ---------------------------------------------------------------------------
+# UPDATE-HINWEIS
+#
+# Das Programm wird als .deb ueber GitHub verteilt und hat KEINE apt-Quelle.
+# "apt update" erfaehrt also nie davon, dass es eine neuere Fassung gibt — der
+# Nutzer bleibt auf seiner sitzen, ohne es zu merken.
+#
+# Deshalb: eine unaufdringliche Zeile im Fenster. KEIN Popup beim Start, KEINE
+# automatische Installation — nur ein Hinweis mit Link.
+#
+# Grundregeln, die hier nicht verhandelbar sind:
+#   * Das Fenster darf NIE warten          -> eigener Faden + hartes Zeitlimit
+#   * Es darf NIE abstuerzen               -> schlaegt etwas fehl, bleibt die Zeile weg
+#   * KEINE neue Abhaengigkeit             -> urllib steckt in python3
+#   * Abschaltbar                          -> Datei KEIN_UPDATE_DATEI anlegen
+# ---------------------------------------------------------------------------
+
+UPDATE_API = 'https://api.github.com/repos/Zahnschmerz/rikus-zram/releases/latest'
+UPDATE_SEITE = 'https://github.com/Zahnschmerz/rikus-zram/releases/latest'
+KONFIG_ORDNER = os.path.expanduser('~/.config/rikus-zram')
+KEIN_UPDATE_DATEI = os.path.join(KONFIG_ORDNER, 'kein-update-hinweis')
+UPDATE_ZEITLIMIT = 4          # Sekunden; danach still aufgeben
+
+
+def version_tupel(text):
+    """'v1.10' -> (1, 10). Fuer den VERGLEICH von Versionen.
+
+    ⚠️ Versionen NIEMALS als Text vergleichen: '1.10' < '1.9' ist als Text WAHR,
+    der Hinweis bliebe ab 1.10 fuer immer aus. Zahlen vergleichen, nicht Buchstaben.
+    """
+    return tuple(int(t) for t in re.findall(r'\d+', text or '')) or (0,)
+
+
+def neuere_version():
+    """Fragt GitHub nach der neuesten Fassung. Rueckgabe: '1.10' oder None.
+
+    None heisst schlicht 'keinen Hinweis anzeigen' — egal ob es nichts Neues gibt,
+    das Netz fehlt, GitHub bockt oder der Nutzer es abgeschaltet hat. Kein Internet
+    ist der NORMALFALL, kein Fehler.
+    """
+    if os.path.exists(KEIN_UPDATE_DATEI):
+        return None
+    try:
+        import urllib.request
+        with urllib.request.urlopen(UPDATE_API, timeout=UPDATE_ZEITLIMIT) as antwort:
+            tag = json.loads(antwort.read().decode('utf-8')).get('tag_name', '')
+        if version_tupel(tag) > version_tupel(VERSION):
+            return tag.lstrip('vV') or tag
+    except Exception:
+        pass                  # bewusst ALLES abfangen: ein Hinweis darf nie stoeren
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -1072,6 +1127,16 @@ class RikusZram(Gtk.Window):
         titel.set_margin_bottom(10)
         aussen.pack_start(titel, False, False, 0)
 
+        # Update-Hinweis: bleibt UNSICHTBAR, solange nichts Neues da ist.
+        # set_no_show_all verhindert, dass ein spaeteres show_all() ihn doch einblendet
+        # — dieses Fenster baut sich nach jeder Aenderung neu auf.
+        self.update_label = Gtk.Label()
+        self.update_label.set_no_show_all(True)
+        self.update_label.set_justify(Gtk.Justification.CENTER)
+        self.update_label.set_margin_bottom(8)
+        aussen.pack_start(self.update_label, False, False, 0)
+        threading.Thread(target=self._update_pruefen, daemon=True).start()
+
         self.reiter = Gtk.Notebook()
         aussen.pack_start(self.reiter, True, True, 0)
 
@@ -1110,6 +1175,37 @@ class RikusZram(Gtk.Window):
         self.aufbauen()
 
     # -- Bausteine ----------------------------------------------------------
+
+    def _update_pruefen(self):
+        """Laeuft im EIGENEN Faden, damit das Fenster nie auf das Netz wartet.
+
+        Das Ergebnis darf nicht von hier aus in die Oberflaeche geschrieben werden —
+        GTK vertraegt keine Zugriffe aus fremden Faeden. Deshalb der Rueckweg ueber
+        GLib.idle_add, das die Anzeige im Oberflaechen-Faden erledigt.
+        """
+        try:
+            neu = neuere_version()
+            if neu:
+                GLib.idle_add(self._update_zeigen, neu)
+        except Exception:
+            pass                  # ein Hinweis darf das Programm niemals stoeren
+
+    def _update_zeigen(self, neu):
+        """Blendet die Hinweiszeile ein. Laeuft im Oberflaechen-Faden (via idle_add)."""
+        try:
+            # ⚠️ Die Versionsnummer kommt AUS DEM INTERNET und landet in set_markup.
+            # Ein "&" darin macht ohne Absicherung die GANZE Zeile unsichtbar — ohne
+            # jede Fehlermeldung. Genau dieser Fehler steckte bis 6.10 in Rikus Mintshot.
+            text = GLib.markup_escape_text(
+                t(f'🔔 Version {neu} ist verfügbar', f'🔔 Version {neu} is available'))
+            link = GLib.markup_escape_text(t('ansehen', 'view'))
+            self.update_label.set_markup(
+                f'<span size="small" foreground="#2e7d32">{text} — '
+                f'<a href="{GLib.markup_escape_text(UPDATE_SEITE)}">{link}</a></span>')
+            self.update_label.show()
+        except Exception:
+            pass
+        return False              # idle_add: nur einmal ausfuehren
 
     def _kasten(self, eltern, titel):
         rahmen = Gtk.Frame()

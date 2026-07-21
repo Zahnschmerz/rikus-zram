@@ -234,7 +234,29 @@ The backups sit next to the original files (`*.bak-rikuszram-*`). The undo butto
 
 ---
 
-## Help and feedback
+## 10. The update hint
+
+From version 1.10 on, the program checks once at startup whether a newer version
+exists. If so, a small green line with a link to the download page appears below the
+title. **That is all it does** — nothing is downloaded and nothing is installed.
+Without internet the line simply does not appear; the window opens instantly as usual.
+
+**Why this exists:** The program is shipped as a `.deb` via GitHub, so it is *not* an
+apt source. `apt update` never learns about newer versions — without this hint you
+would silently stay on an old release.
+
+**Turn it off** — a single line in a terminal:
+
+```
+touch ~/.config/rikus-zram/kein-update-hinweis
+```
+
+The program then stops asking altogether. To turn it back on:
+
+```
+rm ~/.config/rikus-zram/kein-update-hinweis
+```
+
 
 **Website:** [zram.rikus.info](https://zram.rikus.info)
 **Source and bug reports:** [github.com/Zahnschmerz/rikus-zram](https://github.com/Zahnschmerz/rikus-zram)
@@ -243,3 +265,5 @@ Found a bug or have an idea? Please report it — the program lives on feedback.
 
 **Rikus Zram** — by Gilbert Rikus · GPL-3.0
 Sister project: **Rikus Mintshot** ([snapshot.rikus.info](https://snapshot.rikus.info)) — a one-click bootable clone of your Linux Mint system.
+
+## Help and feedback
