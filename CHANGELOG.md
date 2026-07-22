@@ -5,6 +5,39 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.16 — 22. Juli 2026
+
+**🔴 🇩🇪 Drei Fehler in den Empfehlungen — sie hätten zu unnötigen Änderungen geführt.**
+
+**1. SSDs wurden für drehende Festplatten gehalten.**
+Der Kernel meldet über USB-Gehäuse und bei virtuellen Platten fast immer „rotierend", weil die Information unterwegs verlorengeht. Gemessen auf drei Rechnern — darunter eine **Samsung SSD 850 EVO**, bei der das Wort SSD sogar im Namen steht. Das Programm glaubte es und schrieb: *„Etwas zurückhaltender, weil sich deine Platte dreht."* Es empfahl dadurch swappiness 120 statt 150.
+Jetzt wird gegengeprüft: Nennt sich das Gerät selbst SSD/NVMe, gilt es als SSD. Hängt es an **USB** oder läuft der ganze Rechner **virtuell**, gilt die Angabe als **unbekannt** — und unbekannt wird wie SSD behandelt, statt eine falsche Begründung zu erfinden.
+
+**2. Vorhandene Swap-Partitionen wurden übersehen.**
+Die Empfehlung zählte nur Swap-**Dateien**. Auf einem Server lagen **31,9 GiB als Partition** bereit — das Programm sah „0 GiB" und empfahl, **33 GB anzulegen**. Völlig überflüssig, und auf einem gemieteten Server teurer Platz.
+Jetzt zählen Partitionen mit. Ist bereits genug da, lautet die Empfehlung **0** — mit Begründung: *„Du hast bereits eine Swap-Partition mit 31,9 GiB als Reserve."*
+⚠️ **Das Programm ändert Partitionen weiterhin nie** — es rechnet sie nur mit.
+
+**3. Der Ruhezustand führte zu einer riesigen Empfehlung, ohne zu prüfen, ob dafür schon gesorgt ist.**
+Ist er eingerichtet und reicht eine vorhandene Partition dafür aus, wird das jetzt erkannt und **nichts Zusätzliches** empfohlen. Reicht sie nicht, wird nur noch die **Differenz** vorgeschlagen — und die vorhandene Größe genannt.
+
+**Nachtrag zu Punkt 3 (noch am selben Tag gefunden):** Die Ruhezustands-Prüfung war auch nach der ersten Korrektur noch zu grob — sie schaute nur, *ob* die Datei Text enthält. Die enthält aber praktisch immer welchen, auch Kommentare und auch die ausdrückliche Abschaltung `RESUME=none`. Gemessen auf einem Server: Nach dem Abschalten meldete das Programm weiterhin „Ruhezustand eingerichtet". Jetzt zählt nur noch ein **echtes Ziel** (UUID oder Gerätepfad) — `none`, `auto` und Kommentarzeilen nicht.
+
+*Am Verhalten des Programms ändert sich sonst nichts: Es fasst nach wie vor nur Swap-Dateien an, niemals Partitionen.*
+
+**🔴 🇬🇧 Three faults in the recommendations — they would have caused needless changes.**
+
+**1. SSDs were taken for spinning disks.** Over USB enclosures and on virtual disks the kernel almost always reports „rotational", because the information is lost on the way. Measured on three machines — one a **Samsung SSD 850 EVO**, with SSD in its very name. The program believed it and wrote *„slightly more cautious because your disk is a spinning one"*, recommending swappiness 120 instead of 150.
+It now cross-checks: if the device calls itself SSD/NVMe, it counts as one. If it sits behind **USB** or the machine runs **virtualised**, the value counts as **unknown** — and unknown is treated as SSD rather than inventing a false reason.
+
+**2. Existing swap partitions were ignored.** The recommendation counted only swap **files**. One server had **31.9 GiB as a partition** ready — the program saw „0 GiB" and suggested creating **33 GB**. Entirely redundant.
+Partitions now count. When enough is present the recommendation is **0**, with the reason given.
+⚠️ **The program still never touches partitions** — it merely counts them.
+
+**3. Hibernation produced a huge recommendation without checking whether it was already provided for.** If a partition covers it, nothing extra is suggested; if not, only the **difference** is.
+
+---
+
 ## 1.14 — 22. Juli 2026
 
 **🔴 🇩🇪 Wichtig: Das Programm erkennt jetzt, wenn ein ANDERES Werkzeug das zram regelt — und hält sich heraus.**

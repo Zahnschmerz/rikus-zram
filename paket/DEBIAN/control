@@ -1,5 +1,5 @@
 Package: rikus-zram
-Version: 1.14
+Version: 1.16
 Architecture: all
 Maintainer: Gilbert Rikus <gilbert@rikus.info>
 Section: utils

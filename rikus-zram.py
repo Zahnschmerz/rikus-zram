@@ -38,7 +38,7 @@ gi.require_version('Gtk', '3.0')
 # Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
 from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.14'
+VERSION = '1.16'
 
 
 # ---------------------------------------------------------------------------
@@ -343,6 +343,15 @@ def platte_messen():
     frei_text = felder[2] if len(felder) > 2 else '?'
 
     # Dreht sich die Platte? (0 = SSD)
+    # 🔴🔴 NICHT blind auf 'rotational' vertrauen (Gilbert-Flotte, 22.07.2026):
+    # Ueber USB-Bruecken und bei virtuellen Platten geht die Information
+    # verloren, der Kernel meldet dann pauschal '1' = dreht sich. Gemessen:
+    #   pi4      Samsung SSD 850 EVO (USB)  -> ROTA=1  ← SSD steht im Namen!
+    #   pi5      NVMe im USB-Gehaeuse       -> ROTA=1
+    #   rk-pr01  VMware Virtual disk        -> ROTA=1
+    # Folge war eine falsche Begruendung im Fenster: „zurueckhaltender, weil
+    # sich deine Platte dreht" — bei einer SSD.
+    # ➡️ Drei Gegenproben, bevor 'dreht sich' geglaubt wird.
     ssd = None
     geraet = re.sub(r'\[.*\]$', '', quelle)
     geraet = os.path.basename(geraet)
@@ -351,17 +360,48 @@ def platte_messen():
     if rota in ('0', '1'):
         ssd = (rota == '0')
 
+    unsicher = False
+    if ssd is False:                      # nur pruefen, wenn 'dreht sich'
+        # (a) Modellname nennt sich selbst SSD/NVMe?
+        modell = _lies(f'/sys/block/{geraet}/device/model').strip().lower()
+        # (b) haengt es an USB? Dann ist ROTA fast immer geraten.
+        ueber_usb = 'usb' in _lauf('lsblk', '-dno', 'TRAN', f'/dev/{geraet}').lower()
+        # (c) laeuft der ganze Rechner virtuell?
+        virtuell = _lauf('systemd-detect-virt').strip() not in ('', 'none')
+        if 'ssd' in modell or 'nvme' in modell or geraet.startswith('nvme'):
+            ssd, unsicher = True, False
+        elif ueber_usb or virtuell:
+            ssd, unsicher = None, True    # ehrlich: unbekannt, nicht 'dreht sich'
+
     return {'quelle': quelle, 'dateisystem': dateisystem, 'ssd': ssd,
-            'frei_text': frei_text}
+            'frei_text': frei_text, 'ssd_unsicher': unsicher}
 
 
 def ruhezustand_messen():
-    """Kann der Rechner Winterschlaf, und ist er eingerichtet?"""
+    """Kann der Rechner Winterschlaf, und ist er eingerichtet?
+
+    🔴 Bis v1.15 wurde nur geprueft, ob die Datei ueberhaupt Text enthaelt.
+    Das ist zu grob: Sie enthaelt praktisch IMMER Text — auch Kommentare,
+    auch die ausdrueckliche Abschaltung `RESUME=none`. Gemessen am
+    22.07.2026 auf rk-pr01: Nach dem Abschalten meldete das Programm
+    weiterhin „Ruhezustand eingerichtet" und empfahl weiter 15 GB.
+    ➡️ Jetzt zaehlt nur ein ECHTES Ziel: RESUME=<UUID/Pfad>, aber nicht
+    `none`, nicht `auto`, nicht leer. Kommentarzeilen werden uebergangen.
+    """
     kann = 'disk' in _lies('/sys/power/state')
-    eingerichtet = bool(
-        _lies('/etc/initramfs-tools/conf.d/resume').strip()
-        or re.search(r'resume=', _lies('/etc/default/grub')))
-    return {'kann': kann, 'eingerichtet': eingerichtet}
+
+    ziel = ''
+    for zeile in _lies('/etc/initramfs-tools/conf.d/resume').splitlines():
+        zeile = zeile.split('#')[0].strip()
+        if zeile.upper().startswith('RESUME='):
+            ziel = zeile.split('=', 1)[1].strip().strip('"').strip("'")
+    aus_datei = bool(ziel) and ziel.lower() not in ('none', 'auto', 'swap')
+
+    # Auch die Startzeile kann es setzen — dort gilt dasselbe.
+    m = re.search(r"""resume=([^\s"']+)""", _lies('/etc/default/grub'))
+    aus_grub = bool(m) and m.group(1).lower() not in ('none', 'auto')
+
+    return {'kann': kann, 'eingerichtet': aus_datei or aus_grub, 'ziel': ziel}
 
 
 # ---------------------------------------------------------------------------
@@ -372,7 +412,15 @@ def empfehlung_rechnen(ram, zram, swap, swp, platte, ruhe):
     """Gibt fuer jeden Regler den Soll-Wert samt Begruendung in Klartext."""
     gb = ram['gesamt'] / 1024**3
     ssd = platte['ssd'] is not False   # unbekannt wie SSD behandeln
-    e = {}
+    # 🔴 Vorhandene Swap-PARTITIONEN zaehlen mit (Gilbert-Flotte, 22.07.2026):
+    # Bis v1.14 sah die Empfehlung nur Swap-DATEIEN. Auf debian lagen
+    # 31,9 GiB als Partition bereit — das Programm sah „0 GiB" und empfahl,
+    # 33 GB anzulegen. Voellig ueberfluessig und auf einem VPS teuer.
+    # Das Programm AENDERT Partitionen weiterhin nie — es rechnet sie nur mit.
+    swap_partitionen_gb = sum(
+        x['groesse'] for x in (swap or [])
+        if not x.get('ist_zram') and x.get('art') != 'file') / 1024**3
+    e = {'swap_partitionen_gb': swap_partitionen_gb}
 
     # --- Turbo-Groesse (Prozent vom RAM) -----------------------------------
     if gb >= 32:
@@ -403,6 +451,10 @@ def empfehlung_rechnen(ram, zram, swap, swp, platte, ruhe):
             'With zram the system may swap freely — it goes into fast RAM, '
             'not onto the disk. 150 is the value that works best in practice.')
     elif hat_zram:
+        # ⚠️ Hierher kommt man nur, wenn die Platte NACHWEISLICH rotiert.
+        # Ist die Erkennung unsicher (USB, virtuell), gilt sie als SSD —
+        # siehe platte_messen(). Sonst stand im Fenster „weil sich deine
+        # Platte dreht" bei einer Samsung SSD.
         e['swappiness'] = 120
         e['swappiness_warum'] = t(
             'Mit zram darf ausgelagert werden. Etwas zurückhaltender, weil '
@@ -425,14 +477,45 @@ def empfehlung_rechnen(ram, zram, swap, swp, platte, ruhe):
             'keep it rare.')
 
     # --- Reserve auf der Platte (Swap-Datei) -------------------------------
-    if ruhe['eingerichtet']:
-        e['swap_gb'] = max(int(gb) + 2, 4)
+    # 🔴 FEHLER 3 (Gilbert-Flotte 22.07.2026): Der Ruhezustand fuehrte zu einer
+    # riesigen Empfehlung, OHNE zu pruefen, ob dafuer nicht laengst Platz da
+    # ist. Auf debian lagen 31,9 GiB als Swap-Partition bereit — empfohlen
+    # wurden trotzdem 33 GB als zusaetzliche DATEI.
+    if ruhe['eingerichtet'] and swap_partitionen_gb >= gb:
+        # Der Ruhezustand ist versorgt — die Partition reicht dafuer aus.
+        e['swap_gb'] = 0 if gb > 16 else 2
+        e['swap_warum'] = t(
+            f'Dein Ruhezustand ist eingerichtet — und dafür ist bereits '
+            f'gesorgt: Es gibt eine Swap-Partition mit '
+            f'{zahl(swap_partitionen_gb)} GiB, mehr als dein Arbeitsspeicher '
+            f'({zahl(gb)} GiB). Eine zusätzliche Datei brauchst du dafür '
+            f'nicht.',
+            f'Hibernation is set up — and already provided for: a swap '
+            f'partition of {zahl(swap_partitionen_gb)} GiB exists, more than '
+            f'your RAM ({zahl(gb)} GiB). No additional file is needed for it.')
+    elif ruhe['eingerichtet']:
+        fehlend = max(0, int(gb) + 2 - int(swap_partitionen_gb))
+        e['swap_gb'] = max(fehlend, 4) if fehlend else 2
+        vorhanden = (t(f' Vorhanden sind bereits {zahl(swap_partitionen_gb)} '
+                       f'GiB als Partition.',
+                       f' {zahl(swap_partitionen_gb)} GiB already exist as a '
+                       f'partition.') if swap_partitionen_gb else '')
         e['swap_warum'] = t(
             f'Dein Ruhezustand ist eingerichtet. Dafür muss der ganze '
             f'Arbeitsspeicher auf die Platte passen — also mindestens '
-            f'{int(gb)} GiB. zram kann das nicht leisten.',
+            f'{int(gb)} GiB.{vorhanden} zram kann das nicht leisten.',
             f'Hibernation is set up. It needs the entire RAM to fit on disk — '
-            f'so at least {int(gb)} GiB. zram cannot do that.')
+            f'so at least {int(gb)} GiB.{vorhanden} zram cannot do that.')
+    elif swap_partitionen_gb >= 2:
+        # Eine vorhandene Swap-Partition IST die Reserve — keine zweite noetig.
+        e['swap_gb'] = 0
+        e['swap_warum'] = t(
+            f'Du hast bereits eine Swap-Partition mit '
+            f'{zahl(swap_partitionen_gb)} GiB als Reserve. Eine zusätzliche '
+            f'Datei brauchst du nicht — sie würde nur Platz belegen.',
+            f'You already have a swap partition of '
+            f'{zahl(swap_partitionen_gb)} GiB as a reserve. An additional '
+            f'file is not needed — it would only take up space.')
     elif gb <= 4:
         e['swap_gb'] = 4
         e['swap_warum'] = t(
