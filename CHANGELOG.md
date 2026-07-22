@@ -5,6 +5,38 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.23 — 22. Juli 2026
+
+**🔴 🇩🇪 Im Fenster stand „1024,0 MiB" — das gibt es nicht, das sind 1,0 GiB.**
+
+- Gefunden auf **zi3** (Praxis-PC, MX Linux mit SysVinit), im laufenden Fenster: *„du hast **1024,0 MiB** mehr als nötig"*.
+- **Die Ursache war die Reihenfolge.** Der echte Wert lag bei **1023,9961 MiB** — also knapp unter der Grenze, die Einheit MiB war damit richtig gewählt. Erst die Anzeige rundete auf eine Nachkommastelle und machte daraus „1024,0". Zwischen **1023,95 und 1024 MiB** entstand so immer eine Zahl, die es in dieser Einheit gar nicht geben darf.
+- Es ist derselbe Fehlertyp wie früher bei *„1,999996 GiB wurde zu 1"* — nur andersherum: dort schnitt das Abrunden etwas weg, hier schiebt das Runden über die Grenze.
+- **Jetzt** wird nach dem Runden noch einmal geprüft: Ergibt die gerundete Zahl 1024 oder mehr, geht es eine Einheit höher.
+
+**Warum das mehr ist als ein Schönheitsfehler:** Die Größenanzeige wird an **59 Stellen** im Programm benutzt — jede falsche Rundung ist an 59 Stellen sichtbar. Am häufigsten trifft es Stellen, an denen ein **Unterschied** zweier Größen gezeigt wird („dir fehlen …", „du hast … mehr als nötig") — genau dort landen Werte oft knapp unter einer Grenze.
+
+**Nachgemessen:**
+
+| Prüfung | vorher | nachher |
+|---|---|---|
+| 3000 Bytes unter jeder Grenze (KiB/MiB/GiB/TiB) | **6051** Werte zeigten „1024,…" | **0** |
+| 200.000 Zufallswerte bis 2 TiB | 3 Treffer | **0** |
+| Werte, die sich änderten, obwohl sie richtig waren | — | **0** |
+| Rückrechnung der neuen Anzeige | — | Abweichung < **0,003 %** |
+
+*Am Verhalten des Programms hat sich sonst nichts geändert — nur an der Anzeige.*
+
+**🔴 🇬🇧 The window showed „1024.0 MiB" — no such thing, that is 1.0 GiB.**
+
+- Found on a Raspberry-free MX Linux machine in the running window: *„you have **1024.0 MiB** more than needed"*.
+- **The cause was ordering.** The real value was **1023.9961 MiB** — just below the boundary, so MiB was the correct unit. Only the display rounded to one decimal and turned it into „1024.0". Everything between **1023.95 and 1024 MiB** produced a number that cannot exist in that unit.
+- **Now** the rounded number is checked again: if it comes out as 1024 or more, the next unit up is used.
+
+**Why it matters:** the size formatter is used in **59 places**. Measured: 6051 broken values in the critical ranges before, **0** after; **0** correct values changed.
+
+---
+
 ## 1.22 — 22. Juli 2026
 
 **🔴🔴 🇩🇪 Fünf Fehler, gefunden bei einer vollständigen Durchsicht.**

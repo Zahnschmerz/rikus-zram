@@ -38,7 +38,7 @@ gi.require_version('Gtk', '3.0')
 # Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
 from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.22'
+VERSION = '1.23'
 
 
 # ---------------------------------------------------------------------------
@@ -196,14 +196,43 @@ def zahl(wert, stellen=1):
     return s.replace('.', ',') if SPRACHE == 'de' else s
 
 
+EINHEITEN = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
+
+
 def groesse(bytes_):
-    """Bytes in etwas Lesbares. Bewusst mit KiB/MiB/GiB (durch 1024)."""
+    """Bytes in etwas Lesbares. Bewusst mit KiB/MiB/GiB (durch 1024).
+
+    🔴 GERUNDET WIRD ZUERST, DANN ERST DIE EINHEIT GEWAEHLT (seit v1.23).
+
+    Am 22.07.2026 auf zi3 im Fenster entdeckt — dort stand:
+        „du hast **1024,0 MiB** mehr als noetig"
+    1024 MiB SIND 1 GiB. So schreibt das niemand.
+
+    Der Grund war die Reihenfolge: Der echte Wert lag bei **1023,9961 MiB**,
+    also knapp unter der Grenze — die Einheit MiB war damit richtig
+    gewaehlt. Erst die Anzeige rundete auf eine Nachkommastelle und machte
+    daraus „1024,0". Zwischen 1023,95 und 1024 MiB entstand so immer eine
+    Zahl, die es in dieser Einheit gar nicht geben darf.
+
+    Es ist derselbe Fehlertyp wie beim frueheren „1,999996 GiB wurde zu 1"
+    (Gilbert damals: *„das ist irrefuehrend!"*) — nur in die andere
+    Richtung: dort schnitt int() ab, hier schiebt das Runden hinueber.
+
+    ➡️ Deshalb wird jetzt nach dem Runden noch einmal geprueft: Ergibt die
+       gerundete Zahl 1024 oder mehr, geht es eine Einheit hoeher.
+
+    ⚠️ Diese Funktion wird an **59 Stellen** im Programm benutzt — jede
+       falsche Rundung hier ist an 59 Stellen sichtbar.
+    """
     b = float(bytes_)
-    for einheit in ['B', 'KiB', 'MiB', 'GiB', 'TiB']:
-        if b < 1024 or einheit == 'TiB':
+    for i, einheit in enumerate(EINHEITEN):
+        if b < 1024 or einheit == EINHEITEN[-1]:
+            # Die entscheidende Nachpruefung: Was steht nach dem Runden da?
+            if round(b, 1) >= 1024 and einheit != EINHEITEN[-1]:
+                return f'{zahl(b / 1024)} {EINHEITEN[i + 1]}'
             return f'{zahl(b)} {einheit}'
         b /= 1024
-    return f'{zahl(b)} TiB'
+    return f'{zahl(b)} {EINHEITEN[-1]}'
 
 
 # ---------------------------------------------------------------------------
