@@ -5,6 +5,26 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.21 — 22. Juli 2026
+
+**🔴 🇩🇪 Das Paket hieß 1.20 — das Fenster zeigte unten weiter „1.19".**
+
+- Die Versionsnummer stand an **zwei** Stellen: in den Paketangaben *und* im Programm selbst. Bei Fassung 1.20 wurde nur die erste geändert. Ergebnis: `apt` meldete 1.20, das Fenster nannte sich 1.19.
+- Das ist mehr als ein Schönheitsfehler. Wer eine Zahl sieht, die nicht stimmt, **zweifelt zu Recht an allen anderen** — genau darum ging es an diesem Tag schon einmal.
+- **Jetzt** steht die Nummer nur noch an **einer** Stelle. Das Bauskript setzt sie ins Programm ein und **bricht den Bau ab**, falls beide je auseinanderlaufen.
+
+*Am Programm selbst hat sich nichts geändert.*
+
+**🔴 🇬🇧 The package said 1.20 — the window still showed "1.19" at the bottom.**
+
+- The version number lived in **two** places: the package metadata *and* the program itself. Release 1.20 only changed the first one.
+- A number that does not match makes people rightly doubt every other number too.
+- **Now** it lives in **one** place. The build script writes it into the program and **aborts the build** if the two ever diverge.
+
+*No change to the program itself.*
+
+---
+
 ## 1.20 — 22. Juli 2026
 
 **🔴 🇩🇪 Der Installationsbefehl in der Anleitung konnte die FALSCHE Fassung installieren.**

@@ -47,7 +47,7 @@ Das Programm läuft mit **systemd** und mit **SysVinit** (also auch auf MX Linux
 Dafür brauchst du **kein Terminal**.
 
 **Schritt 1 — Herunterladen.**
-Öffne die Download-Seite und klicke auf die Datei, die mit **`rikus-zram_`** anfängt und auf **`.deb`** endet (z. B. `rikus-zram_1.20_all.deb` — die Zahl ist die Fassung):
+Öffne die Download-Seite und klicke auf die Datei, die mit **`rikus-zram_`** anfängt und auf **`.deb`** endet (z. B. `rikus-zram_1.21_all.deb` — die Zahl ist die Fassung):
 
 👉 **https://github.com/Zahnschmerz/rikus-zram/releases/latest**
 
@@ -65,7 +65,7 @@ Dieser eine Befehl genügt — er funktioniert aus **jedem** Ordner heraus:
 
 ```
 cd ~/Downloads
-sudo apt install ./rikus-zram_1.20_all.deb
+sudo apt install ./rikus-zram_1.21_all.deb
 ```
 
 Zuerst in den Ordner **Downloads** wechseln, dann die Datei **beim vollen Namen** nennen.

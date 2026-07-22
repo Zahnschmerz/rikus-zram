@@ -38,7 +38,7 @@ gi.require_version('Gtk', '3.0')
 # Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
 from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.19'
+VERSION = '1.21'
 
 
 # ---------------------------------------------------------------------------

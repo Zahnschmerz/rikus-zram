@@ -48,6 +48,20 @@ for DOK in ANLEITUNG.md GUIDE.md README.md README.de.md; do
 done
 echo "  Installationsbefehl in den Anleitungen: rikus-zram_${VERSION}_all.deb"
 
+# --- Versionsnummer IM PROGRAMM nachziehen ---------------------------------
+# 🔴 Bei 1.20 auseinandergelaufen: Das Paket hiess 1.20, das Fenster zeigte
+# unten weiter »1.19«. Ursache: Die Nummer stand an ZWEI Stellen — in
+# paket/DEBIAN/control und als VERSION im Programm. Wer nur eine aendert,
+# bekommt ein Programm, das sich selbst falsch benennt. Genau die Sorte
+# Widerspruch, die einen an allem anderen zweifeln laesst.
+# ➡️ Ab 1.21 ist control die EINZIGE Quelle; hier wird sie eingesetzt.
+sed -i -E "s|^VERSION = '[^']*'|VERSION = '${VERSION}'|" rikus-zram.py
+PROG=$(grep -m1 "^VERSION = " rikus-zram.py | cut -d"'" -f2)
+if [ "$PROG" != "$VERSION" ]; then
+  echo "  ❌ ABBRUCH: Programm sagt $PROG, Paket sagt $VERSION" >&2; exit 1
+fi
+echo "  Versionsnummer im Programm: $PROG" 
+
 # --- Baum zusammenstellen: IMMER frisch aus dem Projekt --------------------
 # So koennen Paket und Projekt nicht auseinanderlaufen.
 mkdir -p "$BAUM/opt/rikus-zram" "$BAUM/usr/share/doc/rikus-zram"
