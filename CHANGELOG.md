@@ -5,6 +5,25 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.17 — 22. Juli 2026
+
+**🔴 🇩🇪 Wichtig: Eine Änderung der zram-Größe griff bisher erst nach einem Neustart des Rechners.**
+
+- **Das Problem:** Ein zram-Gerät kann seine Größe **nicht ändern, solange es als Auslagerung aktiv ist**. Das Programm schrieb den neuen Wert korrekt in die Einstellungsdatei und startete den Dienst neu — aber der Schreibversuch auf das Gerät scheiterte still. Im Systemprotokoll stand: *„Schreibfehler: Das Gerät oder die Ressource ist belegt"*. Der Dienst meldete trotzdem Erfolg.
+  **Folge:** Die Datei sagte 100 %, das Gerät blieb bei 51 %. Erst ein Neustart des ganzen Rechners hätte es in Ordnung gebracht. Gemessen auf einem Raspberry Pi.
+- **Jetzt** wird das Gerät bei einer Größenänderung sauber abgeschaltet, zurückgesetzt und neu angelegt — die neue Größe gilt **sofort**.
+- **Nur bei Größenänderungen.** Wird lediglich swappiness geändert, bleibt zram unangetastet — dann muss nichts zurück in den Arbeitsspeicher geschoben werden.
+- Die **Nachmessung** hat den Widerspruch übrigens korrekt angezeigt (Datei 100 %, Gerät 51 %) — sie war die einzige Stelle, an der es überhaupt auffiel.
+
+**🔴 🇬🇧 Important: a change to the zram size only took effect after a reboot.**
+
+- **The problem:** a zram device cannot change its size while it is active as swap. The program wrote the new value to the config file and restarted the service — but the write to the device failed silently (*„Device or resource busy"* in the journal), while the service still reported success. The file said 100 %, the device stayed at 51 %.
+- **Now** the device is properly switched off, reset and recreated on a size change — the new size applies **immediately**.
+- **Only on size changes.** For a swappiness-only change zram is left alone, so nothing has to be moved back into RAM.
+- The **verification step** did flag the contradiction correctly — it was the only place where this surfaced at all.
+
+---
+
 ## 1.16 — 22. Juli 2026
 
 **🔴 🇩🇪 Drei Fehler in den Empfehlungen — sie hätten zu unnötigen Änderungen geführt.**

@@ -38,7 +38,7 @@ gi.require_version('Gtk', '3.0')
 # Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
 from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.16'
+VERSION = '1.17'
 
 
 # ---------------------------------------------------------------------------
@@ -580,6 +580,41 @@ def dienst_befehl(sys_):
     return 'service zramswap restart'
 
 
+def zram_neu_anlegen(sys_):
+    """zram wirklich auf die neue GROESSE bringen — nicht nur die Datei aendern.
+
+    🔴🔴 Am 22.07.2026 auf pi5 gemessen: Nach `PERCENT=100` in der Datei und
+    `systemctl restart zramswap` blieb das Geraet bei **8 GiB**. Im Protokoll:
+
+        /usr/sbin/zramswap: Zeile 53: echo: Schreibfehler:
+        Das Geraet oder die Ressource ist belegt.
+
+    **Ein zram-Geraet kann seine Groesse nicht aendern, solange es als
+    Auslagerung aktiv ist.** `zramswap restart` schaltet es nicht sauber ab,
+    der Schreibversuch scheitert — und der Dienst meldet trotzdem Erfolg.
+    Die Aenderung haette erst nach einem NEUSTART des Rechners gegriffen;
+    bis dahin sagt die Datei 100 % und das Geraet 51 %.
+
+    ➡️ Der einzige Weg, der sofort wirkt:
+        1. swapoff  — Ausgelagertes wandert zurueck in den Arbeitsspeicher
+        2. reset    — das Geraet freigeben
+        3. Dienst neu starten — legt es mit der neuen Groesse an
+
+    ⚠️ Schritt 1 braucht so viel freien Arbeitsspeicher, wie gerade in zram
+    liegt. Deshalb wird vorher geprueft (siehe swap_pruefen) und im
+    Zweifel nur die Datei geaendert — dann greift es beim naechsten Start.
+    """
+    return [
+        '# zram sauber neu anlegen (Groesse aendert sich sonst NICHT, s. Doku)',
+        'for g in /sys/block/zram*/; do',
+        '  d=/dev/$(basename "$g")',
+        '  grep -q "^$d " /proc/swaps && swapoff "$d" || true',
+        '  [ -w "$g/reset" ] && echo 1 > "$g/reset" || true',
+        'done',
+        dienst_befehl(sys_) + ' || true',
+    ]
+
+
 INIT_SKRIPT = '/etc/init.d/zramswap'
 
 # Ein vollwertiges LSB-Startskript. Es ruft nur das auf, was auch die
@@ -1080,7 +1115,14 @@ def skript_bauen(schritte, sys_):
     schon_gestartet = any('zramswap' in z and
                           ('restart' in z or 'start' in z) for z in alle)
     if any('zramswap' in z for z in alle) and not schon_gestartet:
-        zeilen.append(dienst_befehl(sys_) + ' || true')
+        # ⚠️ Wurde die GROESSE geaendert (PERCENT/SIZE), genuegt ein einfacher
+        # Neustart NICHT — das Geraet ist belegt und behaelt seine alte Groesse
+        # bis zum naechsten Rechnerstart. Siehe zram_neu_anlegen().
+        groesse_geaendert = any(('PERCENT=' in z or 'SIZE=' in z) for z in alle)
+        if groesse_geaendert:
+            zeilen += zram_neu_anlegen(sys_)
+        else:
+            zeilen.append(dienst_befehl(sys_) + ' || true')
     zeilen.append('echo RIKUSZRAM-FERTIG')
     return '\n'.join(zeilen) + '\n'
 
