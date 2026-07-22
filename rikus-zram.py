@@ -35,7 +35,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Pango, GLib
 
-VERSION = '1.10'
+VERSION = '1.11'
 
 
 # ---------------------------------------------------------------------------
@@ -151,12 +151,12 @@ def _lies(pfad):
 
 
 def gb_gerundet(bytes_):
-    """Bytes in ganze GB — GERUNDET, niemals abgeschnitten.
+    """Bytes in ganze GiB — GERUNDET, niemals abgeschnitten.
 
-    Wichtig, sonst wird die Anzeige irrefuehrend: Eine 2-GB-Auslagerungsdatei
+    Wichtig, sonst wird die Anzeige irrefuehrend: Eine 2-GiB-Auslagerungsdatei
     ist auf der Platte exakt 2.147.483.648 Bytes gross, meldet sich in
     /proc/swaps aber mit 2.147.479.552 Bytes — die ersten 4 KB sind der Kopf
-    der Datei und nicht nutzbar. Das sind 1,999996 GB. Mit int() wird daraus 1.
+    der Datei und nicht nutzbar. Das sind 1,999996 GiB. Mit int() wird daraus 1.
     Folge: Die Anzeige spraenge nach dem Uebernehmen von 2 auf 1 zurueck, und
     das Programm hielte die Reserve faelschlich fuer zu klein.
     """
@@ -334,9 +334,9 @@ def empfehlung_rechnen(ram, zram, swap, swp, platte, ruhe):
     if gb >= 32:
         e['zram_prozent'] = 50
         e['zram_warum'] = t(
-            f'Du hast mit {gb:.0f} GB reichlich Arbeitsspeicher. Die Hälfte '
+            f'Du hast mit {gb:.0f} GiB reichlich Arbeitsspeicher. Die Hälfte '
             'als zram genügt — mehr würde selten gebraucht.',
-            f'With {gb:.0f} GB you have plenty of RAM. Half of it as zram is '
+            f'With {gb:.0f} GiB you have plenty of RAM. Half of it as zram is '
             'enough — more would rarely be used.')
     else:
         e['zram_prozent'] = 100
@@ -386,9 +386,9 @@ def empfehlung_rechnen(ram, zram, swap, swp, platte, ruhe):
         e['swap_warum'] = t(
             f'Dein Ruhezustand ist eingerichtet. Dafür muss der ganze '
             f'Arbeitsspeicher auf die Platte passen — also mindestens '
-            f'{int(gb)} GB. zram kann das nicht leisten.',
+            f'{int(gb)} GiB. zram kann das nicht leisten.',
             f'Hibernation is set up. It needs the entire RAM to fit on disk — '
-            f'so at least {int(gb)} GB. zram cannot do that.')
+            f'so at least {int(gb)} GiB. zram cannot do that.')
     elif gb <= 4:
         e['swap_gb'] = 4
         e['swap_warum'] = t(
@@ -406,9 +406,9 @@ def empfehlung_rechnen(ram, zram, swap, swp, platte, ruhe):
     else:
         e['swap_gb'] = 0
         e['swap_warum'] = t(
-            f'Mit {gb:.0f} GB und laufendem zram brauchst du keine Swap-Datei '
+            f'Mit {gb:.0f} GiB und laufendem zram brauchst du keine Swap-Datei '
             'auf der Platte — außer du möchtest den Ruhezustand nutzen.',
-            f'With {gb:.0f} GB and zram running you do not need a swap file — '
+            f'With {gb:.0f} GiB and zram running you do not need a swap file — '
             'unless you want to use hibernation.')
 
     # --- Sonderfall btrfs ---------------------------------------------------
@@ -729,7 +729,7 @@ def swap_aenderung(ziel_gb, swap, platte, datum):
     # Gilbert 21.07.2026: Auf Linux Mint liegt die Datei standardmaessig unter
     # /swapfile. Der frueher fest verdrahtete Pfad /swap/swapfile traf sie nicht
     # — swapoff/sed/rm liefen ins Leere, danach wurde eine ZWEITE Datei
-    # angelegt. Ergebnis bei ihm: /swapfile 2 GB + /swap/swapfile 15 GB
+    # angelegt. Ergebnis bei ihm: /swapfile 2 GiB + /swap/swapfile 15 GiB
     # gleichzeitig, und beim naechsten Lauf rechnete das Programm mit der
     # Summe weiter. Der Fehler war unsichtbar, solange man nur auf Systemen
     # OHNE vorhandene Swap-Datei testet.
@@ -751,10 +751,10 @@ def swap_aenderung(ziel_gb, swap, platte, datum):
                 f'rm -f {pfad}',
             ]
         namen = ', '.join(x['name'] for x in vorhandene)
-        text = t(f'die vorhandene Swap-Datei {namen} ({ist_gb} GB) abschalten '
+        text = t(f'die vorhandene Swap-Datei {namen} ({ist_gb} GiB) abschalten '
                  f'und entfernen',
                  f'switch off and remove the existing swap file {namen} '
-                 f'({ist_gb} GB)')
+                 f'({ist_gb} GiB)')
         if partitionen:
             text += t(' — deine Swap-Partition bleibt unangetastet',
                       ' — your swap partition is left untouched')
@@ -801,10 +801,10 @@ def swap_aenderung(ziel_gb, swap, platte, datum):
         # nie angefasst) — dann fehlte die Sicherung.
         if not vorhandene:
             neu.insert(0, f'cp -a /etc/fstab "/etc/fstab.bak-{STEMPEL}-{datum}"')
-        text = t(f'eine Swap-Datei von {ziel_gb} GB anlegen unter {SWAP_DATEI}, '
+        text = t(f'eine Swap-Datei von {ziel_gb} GiB anlegen unter {SWAP_DATEI}, '
                  f'dauerhaft eintragen und einschalten (Priorität 10 — zram '
                  f'behält mit 100 den Vortritt)',
-                 f'create a {ziel_gb} GB swap file at {SWAP_DATEI}, add it '
+                 f'create a {ziel_gb} GiB swap file at {SWAP_DATEI}, add it '
                  f'permanently and switch it on (priority 10 — zram keeps '
                  f'precedence with 100)')
         if ist_btrfs:
@@ -896,14 +896,14 @@ def swap_pruefen(ziel_gb, swap, platte):
             frei_platte = None
         if frei_platte is not None:
             noetig = (ziel_gb - ist_gb) * 1024**3
-            if noetig > frei_platte - 5 * 1024**3:      # 5 GB Luft lassen
+            if noetig > frei_platte - 5 * 1024**3:      # 5 GiB Luft lassen
                 return t(
                     f'Dafür werden {groesse(noetig)} gebraucht, frei sind '
                     f'nur {groesse(frei_platte)}. Das wäre zu knapp — '
-                    'mindestens 5 GB sollten frei bleiben.',
+                    'mindestens 5 GiB sollten frei bleiben.',
                     f'{groesse(noetig)} would be needed, but only '
                     f'{groesse(frei_platte)} is free. That is too tight — at '
-                    'least 5 GB should remain available.')
+                    'least 5 GiB should remain available.')
 
     # 3) Liegt an der Stelle schon etwas im Weg?
     if ziel_gb > 0 and os.path.isdir(SWAP_ORT):
@@ -1408,6 +1408,52 @@ class RikusZram(Gtk.Window):
                     f'· used {groesse(x["benutzt"])} · priority {x["prio"]}'))
         else:
             self._zeile(box, t('Keine vorhanden.', 'None present.'))
+
+        # --- Die Zahl, die JEDES andere Werkzeug zeigt ----------------------
+        # 🔴 Gilbert 22.07.2026: „schau mal die auslagerungsdatei. da steht
+        # 2 gb. in fastfetch steht aber 17 gb" — und danach: „fuer mich
+        # funktioniert das programm nicht. weil es zeigt nicht das was reel
+        # ist."  Er hatte recht, auch wenn beide Zahlen stimmten:
+        # fastfetch/htop/free zeigen die SUMME aus zram + Datei, weil Linux
+        # zram ebenfalls als Auslagerung fuehrt (in /proc/swaps steht es
+        # sogar als „partition"). Dieses Programm zeigte die Teile — die
+        # Summe aber nirgends. Wer die beiden Zahlen nebeneinander sah,
+        # musste schliessen, dass eine davon luegt.
+        # ➡️ Die Summe steht jetzt hier, mit dem Grund fuer den Unterschied.
+        summe = sum(x['groesse'] for x in swap)
+        zram_teil = sum(x['groesse'] for x in swap if x['ist_zram'])
+        datei_teil = summe - zram_teil
+        if summe:
+            if zram_teil and datei_teil:
+                aufteilung = t(
+                    f' — davon {groesse(zram_teil)} zram (im Arbeitsspeicher) '
+                    f'und {groesse(datei_teil)} auf der Platte',
+                    f' — of that {groesse(zram_teil)} zram (inside RAM) '
+                    f'and {groesse(datei_teil)} on disk')
+            elif zram_teil:
+                aufteilung = t(' — alles davon zram (im Arbeitsspeicher)',
+                               ' — all of it zram (inside RAM)')
+            else:
+                aufteilung = t(' — alles davon auf der Platte',
+                               ' — all of it on disk')
+            self._zeile(box, t(
+                f'<b>Zusammen {groesse(summe)} Auslagerung</b>{aufteilung}.',
+                f'<b>{groesse(summe)} of swap in total</b>{aufteilung}.'))
+            if zram_teil:
+                self._zeile(box, t(
+                    'Andere Programme wie <i>fastfetch</i>, <i>htop</i> oder '
+                    '<i>free</i> zeigen <b>nur diese Summe</b> — sie zählen '
+                    'zram mit, weil Linux es ebenfalls als Auslagerung führt. '
+                    'Dort steht deshalb eine größere Zahl als oben bei der '
+                    'einzelnen Datei. Beides stimmt, es wird nur '
+                    'unterschiedlich zusammengefasst.',
+                    'Other tools such as <i>fastfetch</i>, <i>htop</i> or '
+                    '<i>free</i> show <b>only this total</b> — they count zram '
+                    'in, because Linux treats it as swap too. That is why they '
+                    'show a larger number than the individual file above. Both '
+                    'are correct, they are just grouped differently.'),
+                    klein=True)
+
         # --- Ruhezustand: erklaeren, nicht nur benennen ---------------------
         # Gilbert 21.07.2026: „was bedeutet den ruhestand nutzen?" — der
         # Begriff stand vorher nackt da, ohne die noetige GROESSE und ohne den
@@ -1423,13 +1469,13 @@ class RikusZram(Gtk.Window):
                 f'der Rechner den ganzen Arbeitsspeicher auf die Platte und '
                 f'schaltet sich komplett aus — nach dem Einschalten ist alles '
                 f'wieder offen wie vorher. Dafür muss die Swap-Datei '
-                f'mindestens {noetig_gb} GB groß sein (du hast '
-                f'{ist_swapdatei_gb} GB).',
+                f'mindestens {noetig_gb} GiB groß sein (du hast '
+                f'{ist_swapdatei_gb} GiB).',
                 f'<b>Hibernation: configured.</b> The computer writes the '
                 f'entire RAM to disk and switches off completely — after '
                 f'switching on, everything is open again as before. The swap '
-                f'file has to be at least {noetig_gb} GB for that (you have '
-                f'{ist_swapdatei_gb} GB).'), klein=True)
+                f'file has to be at least {noetig_gb} GiB for that (you have '
+                f'{ist_swapdatei_gb} GiB).'), klein=True)
         elif ruhe['kann']:
             self._zeile(box, t(
                 f'<b>Ruhezustand (Hibernate): nicht eingerichtet.</b> Damit '
@@ -1448,15 +1494,15 @@ class RikusZram(Gtk.Window):
                 klein=True)
             self._zeile(box, t(
                 f'Wenn du ihn nutzen willst, brauchst du <b>zwei</b> Dinge: '
-                f'eine Swap-Datei von <b>mindestens {noetig_gb} GB</b> '
-                f'(du hast {ist_swapdatei_gb} GB — auf der nächsten Seite '
+                f'eine Swap-Datei von <b>mindestens {noetig_gb} GiB</b> '
+                f'(du hast {ist_swapdatei_gb} GiB — auf der nächsten Seite '
                 f'einstellbar) <b>und</b> einen Eintrag in der '
                 f'Startkonfiguration, den <b>dieses Programm nicht setzt</b>. '
                 f'zram hilft hier nicht: Es liegt im Arbeitsspeicher und ist '
                 f'beim Ausschalten mit weg.',
                 f'To use it you need <b>two</b> things: a swap file of '
-                f'<b>at least {noetig_gb} GB</b> (you have {ist_swapdatei_gb} '
-                f'GB — adjustable on the next page) <b>and</b> an entry in the '
+                f'<b>at least {noetig_gb} GiB</b> (you have {ist_swapdatei_gb} '
+                f'GiB — adjustable on the next page) <b>and</b> an entry in the '
                 f'boot configuration that <b>this program does not set</b>. '
                 f'zram cannot help here: it lives in RAM and is gone when the '
                 f'power goes off.'), klein=True)
@@ -1513,11 +1559,11 @@ class RikusZram(Gtk.Window):
         kopf = self._kasten(s, t('Was für diesen Rechner passt',
                                  'What suits this machine'))
         self._zeile(kopf, t(
-            f'Erkannt: <b>{zahl(gb)} GB</b> Arbeitsspeicher · '
+            f'Erkannt: <b>{zahl(gb)} GiB</b> Arbeitsspeicher · '
             f'<b>{"SSD" if platte["ssd"] else "drehende Platte"}</b> · '
             f'Dateisystem <b>{sicher(platte["dateisystem"])}</b> · Ruhezustand '
             f'<b>{"eingerichtet" if ruhe["eingerichtet"] else "nicht eingerichtet"}</b>',
-            f'Detected: <b>{zahl(gb)} GB</b> RAM · '
+            f'Detected: <b>{zahl(gb)} GiB</b> RAM · '
             f'<b>{"SSD" if platte["ssd"] else "spinning disk"}</b> · '
             f'filesystem <b>{sicher(platte["dateisystem"])}</b> · hibernation '
             f'<b>{"configured" if ruhe["eingerichtet"] else "not configured"}</b>'))
@@ -1536,7 +1582,7 @@ class RikusZram(Gtk.Window):
         # nicht zurückblättern müssen, um zu sehen, wovon man ausgeht.
         zram_txt = (f'{groesse(zram[0]["groesse"])} {zram[0]["verfahren"]}'
                     if zram else t('aus', 'off'))
-        swap_txt = (f'{gb_gerundet(sum(x["groesse"] for x in swap if not x["ist_zram"]))} GB'
+        swap_txt = (f'{gb_gerundet(sum(x["groesse"] for x in swap if not x["ist_zram"]))} GiB'
                     if [x for x in swap if not x['ist_zram']]
                     else t('keine', 'none'))
         self._zeile(kopf, t(
@@ -1606,10 +1652,10 @@ class RikusZram(Gtk.Window):
                          'No swap file.\nAs long as zram and RAM suffice, you '
                          'are not missing anything.')
             return t(
-                f'Swap-Datei von <b>{v} GB</b>.\nSie bleibt im Alltag leer '
+                f'Swap-Datei von <b>{v} GiB</b>.\nSie bleibt im Alltag leer '
                 'und greift nur, wenn Arbeitsspeicher UND zram voll sind — '
                 'als Sicherheitsnetz.',
-                f'Swap file of <b>{v} GB</b>.\nIt stays empty in daily use '
+                f'Swap file of <b>{v} GiB</b>.\nIt stays empty in daily use '
                 'and only kicks in when both RAM and zram are full — a safety '
                 'net.')
 
@@ -1622,13 +1668,13 @@ class RikusZram(Gtk.Window):
         if ruhe['kann'] and not ruhe['eingerichtet']:
             noetig = max(1, int(gb) + 1)
             self._zeile(box, t(
-                f'🌙 <b>Ab {noetig} GB wäre der Ruhezustand möglich</b> '
+                f'🌙 <b>Ab {noetig} GiB wäre der Ruhezustand möglich</b> '
                 f'(Rechner ganz aus, alles bleibt offen). Darunter lehnt Linux '
                 f'ihn ab, weil der Arbeitsspeicher nicht hineinpasst. '
                 f'⚠️ Die Größe allein genügt aber nicht — es fehlt dann noch '
                 f'ein Eintrag in der Startkonfiguration, den dieses Programm '
                 f'nicht setzt.',
-                f'🌙 <b>From {noetig} GB up, hibernation would be possible</b> '
+                f'🌙 <b>From {noetig} GiB up, hibernation would be possible</b> '
                 f'(machine fully off, everything stays open). Below that Linux '
                 f'refuses it, because RAM would not fit. ⚠️ The size alone is '
                 f'not enough though — an entry in the boot configuration is '
@@ -1825,7 +1871,7 @@ class RikusZram(Gtk.Window):
                       bool(neu_zram)))
         if ziel_sw > 0 or neu_sw_gb > 0:
             pruef.append((t('Swap-Datei auf der Platte', 'swap file on disk'),
-                          f'{neu_sw_gb} GB',
+                          f'{neu_sw_gb} GiB',
                           neu_sw_gb == ziel_sw))
         # ⭐ Nach jeder Swap-Änderung prüfen, ob Timeshift noch sichern kann.
         #    Eine Auslagerungsdatei am falschen Ort legt es lautlos lahm.

@@ -103,6 +103,21 @@ You see exactly what will happen beforehand, and you have to confirm it.
 
 ---
 
+### ⭐ Why does it say „GiB" and not „GB"?
+
+Because they are **not the same thing** — and the gap grows with size:
+
+| | counts in | 16 billion bytes are |
+|---|---|---|
+| **GB** (gigabyte) | 1000 | 16.56 GB |
+| **GiB** (gibibyte) | 1024 | **15.43 GiB** |
+
+**Linux counts in 1024.** That is why `fastfetch`, `htop`, `free` and this program all show **GiB** — and why a stick labelled "16 GB" shows up as 15.4 in your system. Nothing is missing, it is just counted differently.
+
+Rikus Zram deliberately says **GiB** so its numbers match the rest of your system.
+
+---
+
 ## 5. Second page: what would be better?
 
 Here you find **three sliders**. They sit on **what is currently running** on your machine. The scale below marks what would be **recommended** for your system — you move the slider there yourself if you want.

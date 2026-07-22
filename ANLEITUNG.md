@@ -103,6 +103,21 @@ Du siehst vorher genau, was passieren wird, und musst es bestätigen.
 
 ---
 
+### ⭐ Warum steht dort „GiB" und nicht „GB"?
+
+Weil beides **nicht dasselbe** ist — und der Unterschied wächst mit der Größe:
+
+| | rechnet mit | 16 Milliarden Bytes sind |
+|---|---|---|
+| **GB** (Gigabyte) | 1000 | 16,56 GB |
+| **GiB** (Gibibyte) | 1024 | **15,43 GiB** |
+
+**Linux rechnet mit 1024.** Deshalb zeigen `fastfetch`, `htop`, `free` und dieses Programm **GiB** — und deshalb steht auf einem Riegel „16 GB", während dein System 15,4 anzeigt. Es fehlt nichts, es wird nur anders gezählt.
+
+Rikus Zram schreibt bewusst **GiB**, damit die Zahlen zu dem passen, was der Rest deines Systems anzeigt.
+
+---
+
 ## 5. Die zweite Seite: Was wäre besser?
 
 Hier siehst du **drei Schieberegler**. Sie stehen auf dem, **was bei dir gerade läuft**. Auf der Skala darunter ist markiert, was für deinen Rechner **empfohlen** wäre — dorthin schiebst du selbst, wenn du möchtest.

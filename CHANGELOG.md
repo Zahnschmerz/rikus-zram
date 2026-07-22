@@ -5,6 +5,24 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.11 — 22. Juli 2026
+
+**🇩🇪 Die Zahlen passen jetzt zu dem, was andere Programme anzeigen.**
+
+- **Behoben: Das Programm schrieb „GB", rechnete aber in GiB.** An 34 Stellen stand die Einheit falsch — bei 15,43 GiB Arbeitsspeicher hieß es „15,4 GB". Die Zahl stimmte, die Einheit nicht: 15,4 GB wären 14,3 GiB, also fast ein Gigabyte weniger. Jetzt steht überall **GiB**, so wie Linux tatsächlich rechnet und wie es auch `fastfetch`, `htop` und `free` anzeigen.
+- **Neu: Die Gesamtsumme der Auslagerung steht jetzt da.** Bisher zeigte das Programm zram und Swap-Datei nur einzeln — die Summe, die jedes andere Werkzeug anzeigt, nirgends. Wer 2 GiB Swap-Datei sah und in fastfetch 17,4 GiB, musste schließen, dass eine der beiden Zahlen falsch ist.
+  Jetzt steht unter „Swap": **„Zusammen 17,4 GiB Auslagerung — davon 15,4 GiB zram (im Arbeitsspeicher) und 2,0 GiB auf der Platte"**, mit dem Hinweis, dass andere Programme nur diese Summe zeigen, weil Linux zram ebenfalls als Auslagerung führt.
+- **Warum das wichtig war:** Beide Darstellungen waren technisch richtig — aber wer sie nebeneinander sah, musste das Programm für falsch halten. Ein Programm, das den Nutzer an sich zweifeln lässt, hat seine Aufgabe verfehlt.
+
+**🇬🇧 The numbers now match what other tools show.**
+
+- **Fixed: the program said "GB" but calculated in GiB.** The unit was wrong in 34 places — 15.43 GiB of RAM was labelled "15.4 GB". The figure was right, the unit was not: 15.4 GB would be 14.3 GiB, almost a gigabyte less. It now says **GiB** throughout, matching how Linux actually counts and what `fastfetch`, `htop` and `free` display.
+- **New: the swap total is now shown.** The program listed zram and the swap file separately, but never the total that every other tool reports. Seeing 2 GiB of swap file here and 17.4 GiB in fastfetch, you could only conclude that one of them was lying.
+  Under "Swap" it now reads **"17.4 GiB of swap in total — of that 15.4 GiB zram (inside RAM) and 2.0 GiB on disk"**, explaining that other tools show only this total because Linux treats zram as swap too.
+- **Why this mattered:** both views were technically correct — but seeing them side by side, you had to conclude the program was wrong. A program that makes its user doubt it has failed at its job.
+
+---
+
 ## 1.10 — 21. Juli 2026
 
 **🇩🇪 Das Programm sagt jetzt Bescheid, wenn es eine neuere Fassung gibt.**
