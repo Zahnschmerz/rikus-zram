@@ -47,7 +47,7 @@ The program works with **systemd** and with **SysVinit** (so also on MX Linux an
 You do **not** need a terminal for this.
 
 **Step 1 — Download.**
-Open the download page and click the file starting with **`rikus-zram_`** and ending in **`.deb`** (e.g. `rikus-zram_1.21_all.deb` — the number is the release):
+Open the download page and click the file starting with **`rikus-zram_`** and ending in **`.deb`** (e.g. `rikus-zram_1.22_all.deb` — the number is the release):
 
 👉 **https://github.com/Zahnschmerz/rikus-zram/releases/latest**
 
@@ -65,7 +65,7 @@ This single command is enough — it works from **any** folder:
 
 ```
 cd ~/Downloads
-sudo apt install ./rikus-zram_1.21_all.deb
+sudo apt install ./rikus-zram_1.22_all.deb
 ```
 
 Change into the **Downloads** folder first, then name the file **in full**.

@@ -35,7 +35,7 @@ Der Haken: Einstellen lässt sich das bisher **nur über getippte Befehle und da
 
 ```
 cd ~/Downloads
-sudo apt install ./rikus-zram_1.21_all.deb
+sudo apt install ./rikus-zram_1.22_all.deb
 ```
 
 Den vollen Dateinamen nennen — **nicht** `rikus-zram*.deb` mit Stern: Liegen mehrere Fassungen im Ordner, sortiert `bash` alphabetisch und **1.9 steht hinter 1.19**; der Stern-Befehl installiert dann die ältere (am 22.07.2026 nachgemessen). Über den Knopf „neueste Fassung" heißt die Datei `rikus-zram-neueste.deb`. Bitte `apt install` nehmen, nicht `dpkg -i`.

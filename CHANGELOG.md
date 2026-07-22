@@ -5,6 +5,36 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.22 — 22. Juli 2026
+
+**🔴🔴 🇩🇪 Fünf Fehler, gefunden bei einer vollständigen Durchsicht.**
+
+Gilbert am 22.07.2026: *„weil immer wieder fehler auftreten jeden einzelnen schritt nochmals durchgehen und prüfen ob nicht irgendwo fehler noch sind."* — Das hat sich gelohnt. Alle fünf betreffen die neuen Fähigkeiten aus 1.19 und wären im Alltag erst aufgefallen, wenn sie Schaden angerichtet hätten.
+
+**1. Die Auslagerungs-DATEI wurde mitverändert.** In `/etc/rpi/swap.conf` (Raspberry Pi OS) heißt der Schlüssel `FixedSizeMiB` **zweimal**: unter `[File]` meint er die Auslagerungsdatei, unter `[Zram]` das zram. Das Programm achtete nicht auf die Überschrift und setzte **beide** auf denselben Wert. Aus einer 512-MiB-Datei wären 7818 MiB geworden — auf der SD-Karte eines Raspberry Pi.
+
+**2. Ein zweites zram-Gerät wurde mitverändert.** Dasselbe beim `systemd-zram-generator`: Eine Datei kann `[zram0]`, `[zram1]` … beschreiben. Das Programm änderte `zram-size` in **allen** Abschnitten — auch dort, wo womöglich ein Dateisystem liegt, nicht Auslagerung.
+
+**3. Geschrieben wurde nach `/usr/lib` statt `/etc`.** Auf einem frisch eingerichteten Rechner gibt es **nur** die Systemvorgabe in `/usr/lib/systemd/zram-generator.conf`. Genau dorthin hätte das Programm geschrieben — und beim nächsten Paket-Update wäre die Einstellung **still verschwunden**. Jetzt wird immer nach `/etc` geschrieben; fehlt die Datei dort, wird sie **mit den bisherigen Werten** neu angelegt (systemd liest `/etc` *statt* `/usr/lib`, nicht zusätzlich).
+
+**4. Der Trockenlauf nannte den falschen Befehl.** Er versprach immer `systemctl restart zramswap` — auch auf Rechnern, wo ein ganz anderer Dienst neu gestartet wird. Eine Vorschau, die etwas anderes zeigt als das, was passiert, ist schlimmer als keine.
+
+**5. Sicherungen sammelten sich unbegrenzt an.** Bei jeder Änderung kam eine dazu, keine ging je weg. Jetzt bleiben die **letzten fünf** je Datei; ältere räumt das Programm selbst weg — nur die, die es selbst angelegt hat.
+
+**🔴🔴 🇬🇧 Five faults found in a full review.**
+
+**1. The swap FILE was changed along with zram.** In `/etc/rpi/swap.conf` the key `FixedSizeMiB` appears **twice** — under `[File]` it means the swap file, under `[Zram]` it means zram. The program ignored the section heading and set **both**. A 512 MiB file would have grown to 7818 MiB, on a Raspberry Pi's SD card.
+
+**2. A second zram device was changed along with the first.** Same for `systemd-zram-generator`: one file can describe `[zram0]`, `[zram1]` … and the program rewrote `zram-size` in **all** of them — including devices holding a filesystem rather than swap.
+
+**3. It wrote to `/usr/lib` instead of `/etc`.** On a freshly installed machine only the vendor default in `/usr/lib/systemd/zram-generator.conf` exists. The program would have written there — and the next package update would have **silently wiped** the setting. It now always writes to `/etc`, creating the file **with the existing values** if needed (systemd reads `/etc` *instead of* `/usr/lib`, not in addition).
+
+**4. The dry run named the wrong command.** It always promised `systemctl restart zramswap`, even where a different service is restarted.
+
+**5. Backups piled up without limit.** The **last five** per file are now kept; older ones the program removes itself — only those it created.
+
+---
+
 ## 1.21 — 22. Juli 2026
 
 **🔴 🇩🇪 Das Paket hieß 1.20 — das Fenster zeigte unten weiter „1.19".**

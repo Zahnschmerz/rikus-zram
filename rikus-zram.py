@@ -38,7 +38,7 @@ gi.require_version('Gtk', '3.0')
 # Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
 from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.21'
+VERSION = '1.22'
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +287,39 @@ GENERATOR_PFADE = ['/etc/systemd/zram-generator.conf',
                    '/etc/systemd/zram-generator.conf.d']
 
 
+def ini_abschnitt_lesen(text, abschnitt):
+    """Liest NUR die Zeilen eines bestimmten Abschnitts einer INI-Datei.
+
+    🔴🔴 Gefunden am 22.07.2026 bei der Durchsicht (Gilbert: *„jeden
+    einzelnen schritt nochmals durchgehen und pruefen"*). Bis dahin las das
+    Programm einfach ALLE »schluessel = wert«-Zeilen einer Datei, egal unter
+    welcher Ueberschrift sie standen.
+
+    Das geht bei `/etc/rpi/swap.conf` schief, denn dort kommen **dieselben
+    Schluessel zweimal** vor:
+
+        [File]                     [Zram]
+        RamMultiplier=1            RamMultiplier=1
+        MaxSizeMiB=512             MaxSizeMiB=2048
+        FixedSizeMiB=512   <-- Swap-DATEI      FixedSizeMiB=2048  <-- zram
+
+    Wer nicht auf die Ueberschrift achtet, verwechselt die Groesse der
+    Auslagerungs-DATEI mit der Groesse von zram. Beim Anzeigen faellt das
+    kaum auf — beim Aendern schon.
+    """
+    werte = {}
+    drin = False
+    for zeile in text.splitlines():
+        roh = zeile.split('#')[0].strip()
+        if roh.startswith('[') and roh.endswith(']'):
+            drin = roh.lower() == abschnitt.lower()
+            continue
+        if drin and '=' in roh:
+            s, w = roh.split('=', 1)
+            werte[s.strip()] = w.strip()
+    return werte
+
+
 def fremdes_werkzeug_messen():
     """Regelt ein anderes Werkzeug als zram-tools das zram? Welches?
 
@@ -312,23 +345,29 @@ def fremdes_werkzeug_messen():
     # Swap-Einheit selbst und ignoriert die Generator-Konfiguration.
     if (os.path.exists('/etc/rpi/swap.conf')
             or os.path.exists('/usr/lib/systemd/system-generators/rpi-swap-generator')):
-        werte = {}
-        for zeile in _lies('/etc/rpi/swap.conf').splitlines():
-            zeile = zeile.split('#')[0].strip()
-            if '=' in zeile and not zeile.startswith('['):
-                s, w = zeile.split('=', 1)
-                werte[s.strip()] = w.strip()
+        # ⚠️ NUR der Abschnitt [Zram] — [File] hat dieselben Schluesselnamen
+        # und meint die Auslagerungs-DATEI (siehe ini_abschnitt_lesen).
+        werte = ini_abschnitt_lesen(_lies('/etc/rpi/swap.conf'), '[Zram]')
         return {'aktiv': True, 'name': 'rpi-swap',
-                'pfad': '/etc/rpi/swap.conf', 'werte': werte,
+                'pfad': '/etc/rpi/swap.conf',
+                'schreibpfad': '/etc/rpi/swap.conf',
+                'werte': werte,
                 'neustart': 'systemctl restart dev-zram0.swap'}
 
     gen = generator_messen()
     if gen['aktiv']:
         gen['name'] = 'systemd-zram-generator'
         gen['neustart'] = 'systemctl restart systemd-zram-setup@zram0'
+        # 🔴🔴 GELESEN wird, wo die Datei liegt — GESCHRIEBEN wird IMMER
+        # nach /etc. In /usr/lib liegen SYSTEMVORGABEN: Sie werden beim
+        # naechsten Paket-Update ueberschrieben, die Einstellung waere dann
+        # still weg. Auf einem frisch installierten Rechner gibt es NUR die
+        # Datei in /usr/lib — dort haette das Programm bis eben
+        # hineingeschrieben. (22.07.2026 bei der Durchsicht gefunden.)
+        gen['schreibpfad'] = '/etc/systemd/zram-generator.conf'
         return gen
-    return {'aktiv': False, 'name': None, 'pfad': None, 'werte': {},
-            'neustart': None}
+    return {'aktiv': False, 'name': None, 'pfad': None, 'schreibpfad': None,
+            'werte': {}, 'neustart': None}
 
 
 def generator_messen():
@@ -354,16 +393,18 @@ def generator_messen():
     pfade = [p for p in GENERATOR_PFADE if os.path.exists(p)]
     if not pfade:
         return {'aktiv': False, 'pfad': None, 'werte': {}}
+    # ⚠️ Nur der Abschnitt [zram0]. Eine Generator-Datei kann mehrere
+    # Geraete beschreiben ([zram0], [zram1], …) — jedes mit eigenem
+    # »zram-size«. Wer alle Zeilen in einen Topf wirft, liest bei einem
+    # zweiten Geraet den falschen Wert. (22.07.2026 bei der Durchsicht.)
+    # Spaeter gelesene Dateien gewinnen: /etc kommt in GENERATOR_PFADE
+    # zuerst und muss die Vorgabe aus /usr/lib ueberstimmen — deshalb
+    # wird rueckwaerts gelesen.
     werte = {}
-    for p in pfade:
+    for p in reversed(pfade):
         if os.path.isdir(p):
             continue
-        for zeile in _lies(p).splitlines():
-            zeile = zeile.split('#')[0].strip()
-            if '=' not in zeile or zeile.startswith('['):
-                continue
-            s, w = zeile.split('=', 1)
-            werte[s.strip()] = w.strip()
+        werte.update(ini_abschnitt_lesen(_lies(p), '[zram0]'))
     return {'aktiv': True, 'pfad': pfade[0], 'werte': werte}
 
 
@@ -838,7 +879,9 @@ def fremde_zram_aenderung(gen, ziel_prozent, ram, datum, zram=None):
     Knopf koennte sie nicht wieder entfernen — und ein Rueckweg, den es nur
     auf dem Papier gibt, ist keiner (Gesetz 2).
     """
-    d = gen['pfad']
+    # Gelesen wird, wo die Datei liegt — GESCHRIEBEN wird immer nach
+    # /etc (siehe fremdes_werkzeug_messen: schreibpfad).
+    d = gen.get('schreibpfad') or gen['pfad']
     g = gen['werte']
     soll_bytes = ram['gesamt'] * ziel_prozent / 100
     ist_bytes = sum(x['groesse'] for x in (zram or []))
@@ -862,15 +905,33 @@ def fremde_zram_aenderung(gen, ziel_prozent, ram, datum, zram=None):
                  f'set the zram size in {d} to {ziel_prozent} % '
                  f'(zram-size = {wert})')
         zeilen += [
-            # Abschnitt [zram0] anlegen, falls die Datei fehlt oder leer ist.
-            f'[ -f "{d}" ] || printf "%s\\n" "# von Rikus Zram angelegt" '
-            f'"[zram0]" > "{d}"',
-            f'grep -q "^\\[zram0\\]" "{d}" || printf "%s\\n" "[zram0]" >> "{d}"',
-            # Vorhandene Zeile ersetzen, sonst hinter [zram0] einfuegen.
-            f'if grep -q "^[[:space:]]*zram-size" "{d}"; then',
-            f'  sed -i "s|^[[:space:]]*zram-size.*|zram-size = {wert}|" "{d}"',
+            # 🔴🔴 ALLES nur innerhalb von [zram0] — am 22.07.2026 bei der
+            # Durchsicht gefunden und nachgestellt: Ein einfaches
+            # »sed s|zram-size|…|« aendert JEDES zram-size in der Datei,
+            # auch das eines zweiten Geraets [zram1], auf dem womoeglich
+            # ein Dateisystem liegt.
+            # Der Adressbereich /^\[zram0\]/,/^\[/ endet an der naechsten
+            # Abschnittsueberschrift; steht [zram0] am Ende der Datei, gilt
+            # er bis Dateiende. Genau so ist es gemeint.
+            #
+            # Fehlt die Datei in /etc (frische Installation — dort gibt es
+            # nur die Vorgabe in /usr/lib), wird sie MIT DEN BISHERIGEN
+            # WERTEN neu angelegt. Sonst gingen »compression-algorithm« und
+            # Co. verloren: systemd liest /etc STATT /usr/lib.
+            'if [ ! -f "%s" ]; then' % d,
+            '  printf "%%s\\n" %s > "%s"' % (
+                ' '.join('"%s"' % z for z in
+                         ['# von Rikus Zram angelegt', '[zram0]',
+                          'zram-size = ' + wert]
+                         + ['%s = %s' % (k, v) for k, v in sorted(g.items())
+                            if k != 'zram-size']), d),
             'else',
-            f'  sed -i "0,/^\\[zram0\\]/s||[zram0]\\nzram-size = {wert}|" "{d}"',
+            f'  grep -q "^\\[zram0\\]" "{d}" || printf "%s\\n" "[zram0]" >> "{d}"',
+            f'  if sed -n "/^\\[zram0\\]/,/^\\[/p" "{d}" | grep -q "^[[:space:]]*zram-size"; then',
+            f'    sed -i "/^\\[zram0\\]/,/^\\[/ s|^[[:space:]]*zram-size.*|zram-size = {wert}|" "{d}"',
+            '  else',
+            f'    sed -i "0,/^\\[zram0\\]/s||[zram0]\\nzram-size = {wert}|" "{d}"',
+            '  fi',
             'fi',
         ]
         # (Das noetige »systemctl daemon-reload« haengt zram_neu_anlegen an —
@@ -898,11 +959,19 @@ def fremde_zram_aenderung(gen, ziel_prozent, ram, datum, zram=None):
         #    genau der Grund, warum pi4 trotz 7,6 GiB RAM bei 2 GiB stand.
         #    MaxSizeMiB wird deshalb NICHT angefasst (eine Aenderung weniger).
         zeilen += [
+            # 🔴🔴 ALLES nur innerhalb von [Zram] — am 22.07.2026 bei der
+            # Durchsicht gefunden und nachgestellt: Unter [File] steht
+            # DERSELBE Schluessel »FixedSizeMiB«, dort meint er die Groesse
+            # der Auslagerungs-DATEI. Ein sed ohne Abschnittsgrenze setzte
+            # beide auf denselben Wert — aus einer 512-MiB-Datei waeren
+            # 7818 MiB geworden, auf der SD-Karte eines Raspberry Pi.
             f'[ -f "{d}" ] || printf "%s\\n" "# von Rikus Zram angelegt" > "{d}"',
             f'grep -q "^\\[Zram\\]" "{d}" || printf "%s\\n" "" "[Zram]" >> "{d}"',
-            f'sed -i "s|^[[:space:]]*FixedSizeMiB[[:space:]]*=.*|FixedSizeMiB={mb}|" "{d}"',
-            f'grep -q "^FixedSizeMiB=" "{d}" || '
-            f'sed -i "0,/^\\[Zram\\]/s||[Zram]\\nFixedSizeMiB={mb}|" "{d}"',
+            f'if sed -n "/^\\[Zram\\]/,/^\\[/p" "{d}" | grep -q "^[[:space:]]*FixedSizeMiB[[:space:]]*="; then',
+            f'  sed -i "/^\\[Zram\\]/,/^\\[/ s|^[[:space:]]*FixedSizeMiB[[:space:]]*=.*|FixedSizeMiB={mb}|" "{d}"',
+            'else',
+            f'  sed -i "0,/^\\[Zram\\]/s||[Zram]\\nFixedSizeMiB={mb}|" "{d}"',
+            'fi',
         ]
     else:
         return []
@@ -1353,6 +1422,7 @@ def skript_bauen(schritte, sys_, gen=None):
         else:
             zeilen.append(((gen or {}).get('neustart')
                            or dienst_befehl(sys_)) + ' || true')
+    zeilen += sicherungen_aufraeumen()
     zeilen.append('echo RIKUSZRAM-FERTIG')
     return '\n'.join(zeilen) + '\n'
 
@@ -1360,6 +1430,33 @@ def skript_bauen(schritte, sys_, gen=None):
 def braucht_installation(schritte):
     """Wird ein Paket nachinstalliert? Dann darf es laenger dauern (Netz)."""
     return any('apt-get install' in z for _t, sh, _s in schritte for z in sh)
+
+
+SICHERUNGEN_BEHALTEN = 5
+
+
+def sicherungen_aufraeumen():
+    """Aeltere Sicherungen wegraeumen — es bleiben die letzten fuenf je Datei.
+
+    🔴 Bei der Durchsicht am 22.07.2026 aufgefallen: Auf yoga lagen bereits
+    **fuenf** Sicherungen von `/etc/default/zramswap` nebeneinander, und es
+    waeren mit jeder Aenderung mehr geworden. Der Rueckgaengig-Knopf braucht
+    nur die JUENGSTE; alles darueber ist Ballast in einem Systemverzeichnis.
+    Gilberts Regel dazu ist eindeutig: *„Kein Muell."*
+
+    ⚠️ Es wird NUR geloescht, was dieses Programm selbst angelegt hat
+    (Namensmuster `.bak-rikuszram-<datum>`), und nie die neueste.
+    """
+    nach_ziel = {}
+    for pfad in sicherungen_finden():
+        ziel = re.sub(r'\.bak-%s-.*$' % STEMPEL, '', pfad)
+        nach_ziel.setdefault(ziel, []).append(pfad)
+    zeilen = []
+    for ziel, liste in nach_ziel.items():
+        alt = sorted(liste)[:-SICHERUNGEN_BEHALTEN]
+        for pfad in alt:
+            zeilen.append(f'rm -f "{pfad}"')
+    return zeilen
 
 
 def sicherungen_finden():
@@ -2479,7 +2576,13 @@ class RikusZram(Gtk.Window):
                              '\n\nBacked up beforehand:\n') +
                            '\n'.join(f'•  {s}' for s in gesichert))
                           if gesichert else '')
-        dienst = dienst_befehl(self.daten['sys'])
+        # 🔴 Bis zur Durchsicht am 22.07.2026 stand hier stur
+        # dienst_befehl() — also »systemctl restart zramswap«. Auf einem
+        # Rechner mit einem anderen Werkzeug versprach der Trockenlauf damit
+        # einen Befehl, der gar nicht ausgefuehrt wurde. Eine Vorschau, die
+        # etwas anderes zeigt als das, was passiert, ist schlimmer als keine.
+        _gen = self.daten.get('gen') or {}
+        dienst = _gen.get('neustart') or dienst_befehl(self.daten['sys'])
         installiert_mit = braucht_installation(schritte)
         netzhinweis = (t('\n\n⚠️ Dafür wird ein Paket aus dem Internet '
                          'nachgeladen — du brauchst eine Verbindung. '

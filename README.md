@@ -35,7 +35,7 @@ The catch: configuring this means typing commands and editing system files. Riku
 
 ```
 cd ~/Downloads
-sudo apt install ./rikus-zram_1.21_all.deb
+sudo apt install ./rikus-zram_1.22_all.deb
 ```
 
 Name the file in full — **not** `rikus-zram*.deb`: with several versions in the folder `bash` sorts alphabetically and **1.9 comes after 1.19**, so the wildcard installs the older one (measured 22 July 2026). Via the "latest version" button the file is called `rikus-zram-neueste.deb`. Use `apt install`, not `dpkg -i`.
