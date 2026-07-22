@@ -19,6 +19,14 @@ Statt Sachen wegzuräumen, presst der Rechner sie **auf dem Tisch selbst** zusam
 
 Typisch werden Daten dabei **3- bis 4-fach** kleiner. Aus 4 GB Daten werden gut 1 GB belegter Speicher.
 
+> ⚠️ **Wichtig zu verstehen: zram vergrößert deinen Arbeitsspeicher NICHT.**
+> Es liegt **mitten darin**. Der Vakuumbeutel steht auf demselben Tisch — er nimmt selbst Platz weg, presst aber zusammen, was hineinkommt.
+>
+> **Ein Beispiel mit 16 GB Arbeitsspeicher:** In zram passen 16 GB Daten. Zusammengepresst belegen sie davon nur etwa 4,5 GB — **rund 11 GB bleiben also zusätzlich frei**. Der Rechner meldet weiterhin 16 GB Arbeitsspeicher, kommt damit aber deutlich weiter.
+>
+> Die **Swap-Datei auf der Festplatte** ist dagegen echter *zusätzlicher* Platz — dafür rund 160-mal langsamer.
+
+
 **Und was macht dieses Programm?**
 zram und Swap kann man unter Linux nur über getippte Befehle und das Bearbeiten von Systemdateien einstellen. Rikus Zram macht daraus ein Fenster mit Schiebereglern — mit Erklärung, was jeder Wert bedeutet, und einer Empfehlung für genau deinen Rechner.
 

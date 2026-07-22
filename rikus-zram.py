@@ -38,7 +38,7 @@ gi.require_version('Gtk', '3.0')
 # Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
 from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.12'
+VERSION = '1.13'
 
 
 # ---------------------------------------------------------------------------
@@ -1769,15 +1769,31 @@ class RikusZram(Gtk.Window):
             if p == 0:
                 return t('Kein zram — es wird nichts komprimiert.',
                          'No zram — nothing gets compressed.')
-            gewinn = mb * 3.5
+            # 🔴🔴 RECHENFEHLER bis v1.12 — von Gilbert entdeckt (22.07.2026):
+            # Hier stand `gewinn = mb * 3.5` und daraus „bei 3,5-facher
+            # Kompression passen 54 GiB hinein". FALSCH: Die zram-Groesse
+            # (DISKSIZE) ist BEREITS die unkomprimierte Datenmenge, die
+            # hineinpasst — das System rechnet sie schon so. Die Zahl wurde
+            # also ein zweites Mal multipliziert.
+            #   zramctl: DISKSIZE 15,4G  =  15,4 GiB Daten passen hinein
+            #            TOTAL           =  was davon ECHTEN RAM belegt
+            # Der Gewinn liegt nicht darin, dass mehr hineinpasst, sondern
+            # dass das Hineingelegte WENIGER PLATZ BRAUCHT.
+            # ⚠️ Ebenso wichtig: zram ist KEIN zusaetzlicher Speicher. Es
+            # liegt IM Arbeitsspeicher (gemessen: MemTotal bleibt gleich).
+            belegt = mb / 3.5
+            frei = mb - belegt
             return t(
                 f'zram-Größe <b>{groesse(mb)}</b> ({p} % vom '
-                f'Arbeitsspeicher).\nBei etwa 3,5-facher Kompression '
-                f'entspricht das rund <b>{groesse(gewinn)}</b> an Daten, '
-                f'die hineinpassen.',
-                f'zram size <b>{groesse(mb)}</b> ({p} % of RAM).\nAt roughly '
-                f'3.5× compression that holds about <b>{groesse(gewinn)}</b> '
-                f'of data.')
+                f'Arbeitsspeicher).\nSo viele Daten passen hinein — sie '
+                f'belegen dabei bei etwa 3,5-facher Kompression nur rund '
+                f'<b>{groesse(belegt)}</b> echten Arbeitsspeicher. '
+                f'Es bleiben also rund <b>{groesse(frei)}</b> mehr für '
+                f'deine Programme übrig.',
+                f'zram size <b>{groesse(mb)}</b> ({p} % of RAM).\nThat much '
+                f'data fits in — occupying only about <b>{groesse(belegt)}</b> '
+                f'of real RAM at roughly 3.5× compression. That leaves around '
+                f'<b>{groesse(frei)}</b> more for your programs.')
 
         self.regler_turbo = self._regler(
             box, 0, 200, ist_prozent, e['zram_prozent'], 10, turbo_text)

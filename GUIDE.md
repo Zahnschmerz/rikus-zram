@@ -19,6 +19,14 @@ Instead of moving things away, the system **compresses them on the desk itself**
 
 Typically data becomes **3–4× smaller**. 4 GB of data ends up occupying about 1 GB.
 
+> ⚠️ **Important: zram does NOT make your RAM bigger.**
+> It sits **inside** it. The vacuum bag stands on the same desk — it takes up space itself, but compresses whatever goes in.
+>
+> **An example with 16 GB of RAM:** 16 GB of data fit into zram. Compressed, they occupy only about 4.5 GB of it — so **roughly 11 GB stay free on top**. The machine still reports 16 GB of RAM, but gets much further with it.
+>
+> A **swap file on disk**, by contrast, is genuinely *additional* space — but around 160 times slower.
+
+
 **And what does this program do?**
 On Linux, zram and swap can only be configured by typing commands and editing system files. Rikus Zram turns that into a window with sliders — explaining what each value means, and recommending what fits your particular machine.
 

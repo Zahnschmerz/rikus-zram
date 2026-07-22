@@ -5,6 +5,26 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.13 — 22. Juli 2026
+
+**🔴 🇩🇪 Ein Rechenfehler beim zram-Regler — die genannte Datenmenge war um das 3,5-fache zu hoch.**
+
+- **Behoben:** Beim zram-Regler stand *„zram-Größe 15,4 GiB. Bei etwa 3,5-facher Kompression entspricht das rund **54,0 GiB** an Daten, die hineinpassen."*
+  Das war falsch. Die zram-Größe **ist bereits die Datenmenge**, die hineinpasst — das System rechnet sie schon unkomprimiert (`zramctl` nennt sie `DISKSIZE`). Das Programm hat eine Zahl, die schon multipliziert war, ein zweites Mal multipliziert.
+  Jetzt steht dort: *„zram-Größe **15,4 GiB**. So viele Daten passen hinein — sie belegen dabei nur rund **4,4 GiB** echten Arbeitsspeicher. Es bleiben also rund **11,0 GiB** mehr für deine Programme übrig."*
+- **Der Gewinn liegt nicht darin, dass mehr hineinpasst, sondern dass das Hineingelegte weniger Platz braucht.** Das ist derselbe Vorteil — nur richtig herum beschrieben.
+- **Neu in beiden Anleitungen:** ein Kasten, der klarstellt, dass **zram den Arbeitsspeicher NICHT vergrößert**. Es liegt mitten darin — der Vakuumbeutel steht auf demselben Tisch. Mit einem Rechenbeispiel für 16 GB und der Abgrenzung zur Swap-Datei, die tatsächlich *zusätzlichen* Platz schafft (dafür rund 160-mal langsamer).
+
+**🔴 🇬🇧 A miscalculation on the zram slider — the amount of data stated was 3.5× too high.**
+
+- **Fixed:** the slider used to say *"zram size 15.4 GiB. At roughly 3.5× compression that holds about **54.0 GiB** of data."*
+  Wrong: the zram size **already is** the amount of data that fits — the kernel counts it uncompressed (`zramctl` calls it `DISKSIZE`). The program multiplied a figure that was already multiplied.
+  It now reads: *"zram size **15.4 GiB**. That much data fits in — occupying only about **4.4 GiB** of real RAM. That leaves around **11.0 GiB** more for your programs."*
+- **The gain is not that more fits in, but that what goes in takes less room.** Same benefit — described the right way round.
+- **New in both guides:** a box making clear that **zram does not make your RAM bigger**. It sits inside it. With a worked example for 16 GB and the distinction from a swap file, which genuinely adds space (but is around 160 times slower).
+
+---
+
 ## 1.12 — 22. Juli 2026
 
 **🔴 🇩🇪 Fünf Fehler — gefunden, weil das Programm zum ersten Mal auf einem fremden Rechner lief (Raspberry Pi 5, 15,8 GiB Arbeitsspeicher).**
