@@ -5,6 +5,50 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.12 — 22. Juli 2026
+
+**🔴 🇩🇪 Fünf Fehler — gefunden, weil das Programm zum ersten Mal auf einem fremden Rechner lief (Raspberry Pi 5, 15,8 GiB Arbeitsspeicher).**
+
+**1. Wichtig: Die Ampel meldete „alles in Ordnung", obwohl zram nur halb so groß war wie möglich.**
+Sie prüfte nur, *ob* zram läuft — nicht, *ob es groß genug ist*. Die Empfehlung wurde zwar berechnet, stand aber auf der zweiten Seite und wusste nichts von der Ampel. Auf dem Pi war zram auf 8 GiB eingestellt statt der empfohlenen 15,8 — die Ampel sagte trotzdem **grün**. Wer das liest, schaut nicht weiter und verschenkt dauerhaft die Hälfte.
+Jetzt vergleicht die Ampel die eingestellte Größe mit der Empfehlung und wird **gelb**, wenn sie deutlich darunter liegt.
+⚠️ **Kein Fehlalarm bei bewusst kleineren Werten:** Bei viel Arbeitsspeicher lautet die Empfehlung ohnehin 50 % — wer dort 50 % eingestellt hat, bleibt grün. Gewarnt wird erst unterhalb von drei Vierteln der Empfehlung.
+
+**2. Die erste Seite sagte nicht, wie viel eingestellt ist und was fehlt.**
+Im zram-Kasten stand nur die Größe — ob das viel oder wenig ist, nirgends. Wer „8,0 GiB" liest, kann nicht wissen, dass 15,8 möglich wären. Jetzt steht direkt darunter:
+*„Das sind 51 % deines Arbeitsspeichers (15,8 GiB). Empfohlen wären 15,8 GiB (100 %) — es fehlen 7,8 GiB."*
+Dasselbe beim Swap-Kasten: *„Empfohlen wären 2,0 GiB als Reserve — es fehlen 1,8 GiB."* Passt die Einstellung, steht dort schlicht *„Das entspricht der Empfehlung."*
+
+**3. Die Ampel war auf manchen Systemen ein leeres Kästchen.**
+Sie bestand aus einem farbigen Emoji (🟢🟡🔴), das nur wenige Schriften kennen — auf dem Testrechner **keine einzige**. Betroffen waren auch die Zeichen für Update-Hinweis, Ruhezustand und btrfs-Warnung. Jetzt steht dort ein schlichter Punkt **●**, den praktisch jede Schrift kann; die Farbe setzt das Programm ohnehin selbst.
+
+**4. Eine irreführende Kompressionsangabe bei fast leerem zram.**
+Standen nur wenige Kilobyte darin, erschien z. B. *„16,0 KiB Daten belegen nur 48,0 KiB — das ist 0,3-fach"*. Das liest sich wie miserable Kompression, ist aber nur der Verwaltungsaufwand von zram, der bei leerem Speicher naturgemäß größer ist als die Daten. Die Rate erscheint jetzt erst ab 10 MiB.
+
+**5. Auf großen Bildschirmen war das Fenster unnötig abgeschnitten.**
+Es war fest auf 800 Pixel Höhe eingestellt; die Kästen *Einstellungen*, *Dieses System* und *Und weiter?* lagen darunter. Man konnte rollen, aber nichts wies darauf hin. Die Fensterhöhe richtet sich jetzt nach dem Bildschirm.
+
+**🔴 🇬🇧 Five fixes — found the first time the program ran on someone else's machine (Raspberry Pi 5, 15.8 GiB of RAM).**
+
+**1. Important: the traffic light reported "all good" while zram was only half the size it could be.**
+It only checked *whether* zram was running, not *whether it is large enough*. The recommendation was computed but lived on the second page, unknown to the light. On the Pi, zram was set to 8 GiB instead of the recommended 15.8 — and the light still said **green**. Anyone reading that stops looking and permanently gives away half.
+The light now compares the configured size against the recommendation and turns **amber** when it falls well below.
+⚠️ **No false alarms for deliberately smaller values:** with plenty of RAM the recommendation is 50 % anyway, so 50 % stays green. The warning starts below three quarters of the recommendation.
+
+**2. The first page never said how much is configured and what is missing.**
+The zram panel showed only the size — never whether that is a lot or a little. It now reads: *"That is 51 % of your RAM (15.8 GiB). The recommendation would be 15.8 GiB (100 %) — 7.8 GiB short."* The same for the swap panel. When the setting fits, it simply says *"That matches the recommendation."*
+
+**3. On some systems the traffic light was an empty box.**
+It used a coloured emoji (🟢🟡🔴) that few fonts carry — **none at all** on the test machine. The same applied to the update hint, hibernation and btrfs symbols. They are now a plain **●**, which virtually every font has; the colour comes from the program itself anyway.
+
+**4. A misleading compression figure when zram is nearly empty.**
+With only a few kilobytes inside it read e.g. *"16.0 KiB of data occupy 48.0 KiB — that is 0.3×"*, which looks like terrible compression but is merely zram's own overhead. The ratio now appears from 10 MiB upwards.
+
+**5. On large screens the window was cut off for no reason.**
+Its height was fixed at 800 pixels, leaving *Settings*, *This machine* and *What next?* below the edge. You could scroll, but nothing indicated it. The height now follows the screen.
+
+---
+
 ## 1.11 — 22. Juli 2026
 
 **🇩🇪 Die Zahlen passen jetzt zu dem, was andere Programme anzeigen.**

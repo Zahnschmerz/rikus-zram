@@ -33,9 +33,12 @@ import subprocess
 
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Pango, GLib
+# Gdk wird fuer die Bildschirmhoehe gebraucht (siehe _fensterhoehe).
+# ⚠️ Fehlt der Import, faellt die Fensterhoehe STILL auf den alten festen
+# Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
+from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.11'
+VERSION = '1.12'
 
 
 # ---------------------------------------------------------------------------
@@ -972,7 +975,26 @@ def sicherungen_finden():
     return sorted(treffer)
 
 
-def bewerten(ram, zram, swap, swp, einst):
+def bewerten(ram, zram, swap, swp, einst, empf=None):
+    """Ampel und Klartext-Urteil fuer die erste Seite.
+
+    ⚠️⚠️ `empf` ist NICHT optional im Sinne von „egal" — ohne die Empfehlung
+    kann die Ampel nur sagen, OB zram laeuft, nicht ob es GROSS GENUG ist.
+    Genau das war bis 22.07.2026 der Fall, und es war der gefaehrlichste
+    Fehler des ganzen Programms:
+
+    Auf Gilberts pi5 lief zram mit 8 GiB bei 15,8 GiB Arbeitsspeicher — also
+    der HALBEN empfohlenen Groesse. Die Ampel sagte trotzdem **gruen: „Alles
+    in Ordnung. zram laeuft sauber."** Die Empfehlung (100 %) stand auf der
+    zweiten Seite und wusste nichts von der Ampel; die Ampel nichts von ihr.
+
+    Gilbert dazu: *„Das Problem ist, das Programm zeigt aber es ist optimal
+    eingestellt. Das du es nicht siehst sowas macht mir angst."*
+
+    ➡️ Wer „gruen" liest, schaut nicht weiter. Ein Pruefprogramm, das
+    „alles gut" sagt, waehrend die Haelfte verschenkt wird, ist schlimmer
+    als gar keines — es beendet die Suche.
+    """
     hinweise = []
     zram_laeuft = len(zram) > 0
     swap_platte = [s for s in swap if not s['ist_zram']]
@@ -1052,6 +1074,29 @@ def bewerten(ram, zram, swap, swp, einst):
                 'The slow disk is used as much as, or before, fast zram. '
                 'zram should have the higher priority.'))
 
+    # --- Ist zram GROSS GENUG? (siehe Erklaerung oben) ---------------------
+    if zram_laeuft and empf and ram.get('gesamt'):
+        ist_bytes = sum(z['groesse'] for z in zram)
+        ist_proz = ist_bytes * 100 / ram['gesamt']
+        soll_proz = empf.get('zram_prozent')
+        if soll_proz and ist_proz < soll_proz * 0.75:
+            soll_bytes = ram['gesamt'] * soll_proz / 100
+            anteil = ist_bytes / soll_bytes
+            wie = (t('nicht einmal die Hälfte', 'not even half') if anteil < 0.5
+                   else t('etwa die Hälfte', 'about half') if anteil < 0.65
+                   else t('deutlich weniger', 'noticeably less'))
+            hinweise.append(t(
+                f'<b>zram ist kleiner als es sein könnte.</b> Eingestellt sind '
+                f'{groesse(ist_bytes)} ({zahl(ist_proz, 0)} % des '
+                f'Arbeitsspeichers) — empfohlen wären {groesse(soll_bytes)} '
+                f'({soll_proz} %). Das ist {wie} dessen, was möglich wäre. '
+                f'Auf der nächsten Seite kannst du den Regler verschieben.',
+                f'<b>zram is smaller than it could be.</b> It is set to '
+                f'{groesse(ist_bytes)} ({zahl(ist_proz, 0)} % of RAM) — the '
+                f'recommendation would be {groesse(soll_bytes)} '
+                f'({soll_proz} %). That is {wie} of what is possible. '
+                f'You can move the slider on the next page.'))
+
     if zram_laeuft and swp['laufend'] is not None and swp['laufend'] < 100:
         hinweise.append(t(
             f'Der Wert steht auf {swp["laufend"]}. Mit zram im '
@@ -1083,8 +1128,15 @@ def bewerten(ram, zram, swap, swp, einst):
 # OBERFLAECHE
 # ---------------------------------------------------------------------------
 
-AMPEL = {'gruen': ('#2e7d32', '🟢'), 'gelb': ('#ef6c00', '🟡'),
-         'rot': ('#c62828', '🔴')}
+# ⚠️ Bewusst der schlichte Punkt ● (U+25CF), KEIN farbiges Emoji.
+# Die Emoji-Variante 🟢 (U+1F7E2) kennen nur wenige Schriften: auf yoga genau
+# EINE (Noto Sans Symbols2), auf Gilberts pi5 KEINE — dort erschien statt der
+# Ampel ein leeres Kästchen (22.07.2026, von Gilbert im Bild entdeckt).
+# ● dagegen kann praktisch jede Schrift (yoga 168, pi5 161 Schriften).
+# Die Farbe kommt ohnehin aus dem Programm, nicht aus dem Zeichen — das
+# Emoji war doppelt gemoppelt und hat nur die Zuverlässigkeit gekostet.
+AMPEL = {'gruen': ('#2e7d32', '●'), 'gelb': ('#ef6c00', '●'),
+         'rot': ('#c62828', '●')}
 
 
 def swappiness_wort(wert):
@@ -1104,9 +1156,36 @@ def swappiness_wort(wert):
 
 class RikusZram(Gtk.Window):
 
+    @staticmethod
+    def _fensterhoehe():
+        """So hoch wie der Bildschirm erlaubt, hoechstens so hoch wie noetig.
+
+        ⚠️ Vorher stand hier fest 800 Pixel. Auf Gilberts pi5 (1920x1080) war
+        dadurch alles ab „Einstellungen" abgeschnitten — drei ganze Kaesten
+        (Einstellungen · Dieses System · Und weiter?) waren unsichtbar,
+        obwohl der Bildschirm reichlich Platz hatte. Man KONNTE rollen, aber
+        nichts wies darauf hin: GTK blendet die Rollleiste aus, solange die
+        Maus nicht darueber steht. Wer nicht zufaellig scrollt, haelt die
+        Seite fuer zu Ende.
+        Gefunden 22.07.2026 von Gilbert im Bildschirmfoto.
+
+        1000 Pixel reichen fuer alle sieben Kaesten der Uebersicht; auf
+        kleinen Bildschirmen bleiben 90 % der Hoehe uebrig, damit Titelleiste
+        und Kontrollleisten Platz behalten.
+        """
+        try:
+            bs = Gdk.Screen.get_default()
+            if bs:
+                hoch = bs.get_height()
+                if hoch > 0:
+                    return max(600, min(1000, int(hoch * 0.9)))
+        except Exception:
+            pass
+        return 800
+
     def __init__(self):
         super().__init__(title='Rikus Zram')
-        self.set_default_size(720, 800)
+        self.set_default_size(720, self._fensterhoehe())
 
         aussen = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.add(aussen)
@@ -1197,7 +1276,7 @@ class RikusZram(Gtk.Window):
             # Ein "&" darin macht ohne Absicherung die GANZE Zeile unsichtbar — ohne
             # jede Fehlermeldung. Genau dieser Fehler steckte bis 6.10 in Rikus Mintshot.
             text = GLib.markup_escape_text(
-                t(f'🔔 Version {neu} ist verfügbar', f'🔔 Version {neu} is available'))
+                t(f'▶ Version {neu} ist verfügbar', f'▶ Version {neu} is available'))
             link = GLib.markup_escape_text(t('ansehen', 'view'))
             self.update_label.set_markup(
                 f'<span size="small" foreground="#2e7d32">{text} — '
@@ -1308,8 +1387,13 @@ class RikusZram(Gtk.Window):
         sys_ = system_messen()
         platte = platte_messen()
         ruhe = ruhezustand_messen()
-        ampel, urteil, hinweise = bewerten(ram, zram, swap, swp, einst)
+        # ⚠️ REIHENFOLGE IST PFLICHT: erst rechnen, dann bewerten.
+        # Die Ampel braucht die Empfehlung, um zu erkennen, ob zram zwar
+        # laeuft, aber zu klein ist. Vertauscht man beide Zeilen, bekommt
+        # bewerten() ein leeres empf und meldet wieder faelschlich „gruen"
+        # bei halb eingestelltem zram (Gilberts pi5, 22.07.2026).
         empf = empfehlung_rechnen(ram, zram, swap, swp, platte, ruhe)
+        ampel, urteil, hinweise = bewerten(ram, zram, swap, swp, einst, empf)
 
         # fuer den Uebernehmen-Knopf merken
         # ⚠️ 'zram' MUSS hier stehen: _uebernehmen() reicht es an
@@ -1322,7 +1406,7 @@ class RikusZram(Gtk.Window):
                       'zram': zram}
 
         self._seite1(ram, zram, swap, swp, einst, sys_, platte, ruhe,
-                     ampel, urteil, hinweise)
+                     ampel, urteil, hinweise, empf)
         self._seite2(ram, zram, swap, swp, platte, ruhe, empf)
 
         self.show_all()
@@ -1336,7 +1420,7 @@ class RikusZram(Gtk.Window):
         self.reiter.set_current_page(vorher if vorher >= 0 else 0)
 
     def _seite1(self, ram, zram, swap, swp, einst, sys_, platte, ruhe,
-                ampel, urteil, hinweise):
+                ampel, urteil, hinweise, empf=None):
         s = self.seite_uebersicht
 
         farbe, zeichen = AMPEL[ampel]
@@ -1372,7 +1456,48 @@ class RikusZram(Gtk.Window):
                     f'Kompression <b>{sicher(g["verfahren"])}</b>',
                     f'<b>Running.</b>  Size <b>{groesse(g["groesse"])}</b> · '
                     f'compression <b>{sicher(g["verfahren"])}</b>'))
-                if g['daten'] > 4096 and g['belegt_echt'] > 0:
+
+                # --- Eingestellt vs. moeglich, DIREKT hier ------------------
+                # 🔴 Gilbert 22.07.2026: „auf der ersten seite steht nicht
+                # wieviel es eingestellt ist das swap, und was noch fehlt.
+                # wie z.B. bei pi5 jetzt. er könnte 16gb hat aber nur 8 gb
+                # eingestellt. das ist der fehler."
+                # Der Kasten nannte nur die eingestellte Groesse — ob das viel
+                # oder wenig ist, stand nirgends. Wer 8,0 GiB liest, kann
+                # nicht wissen, dass 15,8 moeglich waeren. Die Einordnung
+                # gehoert GENAU HIER hin, wo die Zahl steht — nicht nur oben
+                # in der Ampel und nicht nur auf der zweiten Seite.
+                if ram.get('gesamt'):
+                    proz = g['groesse'] * 100 / ram['gesamt']
+                    soll_proz = (empf or {}).get('zram_prozent')
+                    zeile = t(f'Das sind <b>{zahl(proz, 0)} %</b> deines '
+                              f'Arbeitsspeichers ({groesse(ram["gesamt"])}).',
+                              f'That is <b>{zahl(proz, 0)} %</b> of your RAM '
+                              f'({groesse(ram["gesamt"])}).')
+                    if soll_proz:
+                        soll_b = ram['gesamt'] * soll_proz / 100
+                        fehlt = soll_b - g['groesse']
+                        if fehlt > 0.05 * ram['gesamt']:
+                            zeile += t(
+                                f' Empfohlen wären <b>{groesse(soll_b)}</b> '
+                                f'({soll_proz} %) — es fehlen '
+                                f'<b>{groesse(fehlt)}</b>.',
+                                f' The recommendation would be '
+                                f'<b>{groesse(soll_b)}</b> ({soll_proz} %) — '
+                                f'<b>{groesse(fehlt)}</b> short.')
+                        else:
+                            zeile += t(' Das entspricht der Empfehlung.',
+                                       ' That matches the recommendation.')
+                    self._zeile(box, zeile)
+                # ⚠️ Die Rate erst ab einer ERNSTHAFTEN Datenmenge zeigen.
+                # Bis 22.07.2026 lag die Schwelle bei 4 KiB — auf Gilberts pi5
+                # standen 16 KiB drin, und daraus wurde „16,0 KiB belegen
+                # 48,0 KiB — das ist 0,3-fach". Das liest sich wie eine
+                # miserable Kompression, ist aber nur der Verwaltungsaufwand
+                # von zram, der bei fast leerem Speicher naturgemaess groesser
+                # ist als die Daten selbst. Erst ab einigen Megabyte sagt die
+                # Zahl etwas aus.
+                if g['daten'] >= 10 * 1024**2 and g['belegt_echt'] > 0:
                     faktor = g['daten'] / g['belegt_echt']
                     self._zeile(box, t(
                         f'Gerade zusammengepresst: {groesse(g["daten"])} Daten '
@@ -1381,6 +1506,16 @@ class RikusZram(Gtk.Window):
                         f'Currently compressed: {groesse(g["daten"])} of data '
                         f'occupy only {groesse(g["belegt_echt"])} — that is '
                         f'<b>{zahl(faktor)}×</b>'))
+                elif g['daten'] > 0:
+                    self._zeile(box, t(
+                        f'Zurzeit ist so gut wie nichts ausgelagert '
+                        f'({groesse(g["daten"])}) — dein Arbeitsspeicher reicht '
+                        f'gerade aus. Wie stark zram zusammenpresst, zeigt sich '
+                        f'erst, wenn wirklich etwas drin liegt.',
+                        f'Practically nothing is swapped out right now '
+                        f'({groesse(g["daten"])}) — your RAM is sufficient. How '
+                        f'well zram compresses only shows once there is real '
+                        f'data in it.'), klein=True)
                 else:
                     self._zeile(box, t(
                         'Zurzeit ist nichts ausgelagert — dein '
@@ -1408,6 +1543,34 @@ class RikusZram(Gtk.Window):
                     f'· used {groesse(x["benutzt"])} · priority {x["prio"]}'))
         else:
             self._zeile(box, t('Keine vorhanden.', 'None present.'))
+
+        # --- Auch hier: eingestellt gegen empfohlen (Gilbert 22.07.) --------
+        # Dieselbe Luecke wie beim zram-Kasten: Die Groesse stand da, aber
+        # nicht, ob sie passt. Wer „200,0 MiB" liest, weiss nicht, ob das
+        # viel oder wenig ist.
+        soll_gb = (empf or {}).get('swap_gb')
+        if soll_gb is not None:
+            ist_b = sum(x['groesse'] for x in platte_swap if x.get('art') == 'file')
+            soll_b = soll_gb * 1024**3
+            unterschied = soll_b - ist_b
+            if abs(unterschied) > 0.3 * 1024**3:
+                if unterschied > 0:
+                    self._zeile(box, t(
+                        f'Empfohlen wären <b>{groesse(soll_b)}</b> als Reserve '
+                        f'— es fehlen <b>{groesse(unterschied)}</b>.',
+                        f'The recommendation would be <b>{groesse(soll_b)}</b> '
+                        f'as a reserve — <b>{groesse(unterschied)}</b> short.'))
+                else:
+                    self._zeile(box, t(
+                        f'Empfohlen wären <b>{groesse(soll_b)}</b> — du hast '
+                        f'<b>{groesse(-unterschied)}</b> mehr als nötig. '
+                        f'Der Platz bleibt auf der Platte belegt.',
+                        f'The recommendation would be <b>{groesse(soll_b)}</b> '
+                        f'— you have <b>{groesse(-unterschied)}</b> more than '
+                        f'needed. That space stays occupied on disk.'))
+            elif ist_b:
+                self._zeile(box, t('Das entspricht der Empfehlung.',
+                                   'That matches the recommendation.'))
 
         # --- Die Zahl, die JEDES andere Werkzeug zeigt ----------------------
         # 🔴 Gilbert 22.07.2026: „schau mal die auslagerungsdatei. da steht
@@ -1668,13 +1831,13 @@ class RikusZram(Gtk.Window):
         if ruhe['kann'] and not ruhe['eingerichtet']:
             noetig = max(1, int(gb) + 1)
             self._zeile(box, t(
-                f'🌙 <b>Ab {noetig} GiB wäre der Ruhezustand möglich</b> '
+                f'<b>Ab {noetig} GiB wäre der Ruhezustand möglich</b> '
                 f'(Rechner ganz aus, alles bleibt offen). Darunter lehnt Linux '
                 f'ihn ab, weil der Arbeitsspeicher nicht hineinpasst. '
                 f'⚠️ Die Größe allein genügt aber nicht — es fehlt dann noch '
                 f'ein Eintrag in der Startkonfiguration, den dieses Programm '
                 f'nicht setzt.',
-                f'🌙 <b>From {noetig} GiB up, hibernation would be possible</b> '
+                f'<b>From {noetig} GiB up, hibernation would be possible</b> '
                 f'(machine fully off, everything stays open). Below that Linux '
                 f'refuses it, because RAM would not fit. ⚠️ The size alone is '
                 f'not enough though — an entry in the boot configuration is '
@@ -1682,12 +1845,12 @@ class RikusZram(Gtk.Window):
                 klein=True)
         if platte['dateisystem'] == 'btrfs':
             self._zeile(box, t(
-                f'🛡️ <b>Auf deinem Dateisystem (btrfs) mit Vorsicht:</b> Die '
+                f'⚠ <b>Auf deinem Dateisystem (btrfs) mit Vorsicht:</b> Die '
                 f'Datei bekommt einen <b>eigenen abgetrennten Bereich '
                 f'({SWAP_ORT})</b>. Sonst könnte Timeshift keine '
                 'Sicherungspunkte mehr anlegen — lautlos. Das Programm legt '
                 'ihn selbst richtig an.',
-                f'🛡️ <b>Careful on btrfs:</b> the file gets its <b>own '
+                f'⚠ <b>Careful on btrfs:</b> the file gets its <b>own '
                 f'subvolume ({SWAP_ORT})</b>. Otherwise Timeshift could no '
                 'longer create snapshots — silently. This program sets it up '
                 'correctly by itself.'))
