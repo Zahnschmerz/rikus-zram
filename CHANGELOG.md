@@ -5,6 +5,65 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.19 — 22. Juli 2026
+
+**🔴🔴 🇩🇪 Das Programm bedient jetzt ALLE DREI zram-Werkzeuge — nicht mehr nur eines.**
+
+Gilberts Frage nach Fassung 1.18: *„wieso kann das programm das nicht?"* — Antwort: Es konnte es. Es durfte nur nicht.
+
+- **Bis 1.18** sperrte das Programm auf Rechnern mit `systemd-zram-generator` oder `rpi-swap` seine Knöpfe und konnte nur zusehen. Auf einer Flotte aus sechs Rechnern betraf das **die Hälfte** — dort musste von Hand nachgeholfen werden. Genau das, was dieses Programm überflüssig machen soll.
+- **Jetzt** schreibt es in die Einstellungsdatei des Werkzeugs, das auf dem Rechner **tatsächlich zuständig** ist:
+
+  | Werkzeug | Datei | Neustart |
+  |---|---|---|
+  | `zram-tools` | `/etc/default/zramswap` | `service zramswap restart` |
+  | `systemd-zram-generator` | `/etc/systemd/zram-generator.conf` | `systemctl restart systemd-zram-setup@zram0` |
+  | `rpi-swap` | `/etc/rpi/swap.conf` | `systemctl restart dev-zram0.swap` |
+
+- **Immer nur eines** — zwei konkurrierende Einrichtungen können weiterhin nicht entstehen.
+- **Sicherung und Rückgängig gelten überall.** Deshalb wird die Hauptdatei geändert und keine Zusatzdatei angelegt: Nur so kann der Rückgängig-Knopf sie auch wieder zurücknehmen. Ein Rückweg, den es nur auf dem Papier gibt, ist keiner.
+- **Bei `rpi-swap` wird `FixedSizeMiB` gesetzt** — nachgemessen, nicht angenommen: `RamMultiplier=1` allein läuft in einen eingebauten Deckel von 2048 MiB. Genau daran hing ein Raspberry Pi mit 7,6 GiB Arbeitsspeicher bei 2 GiB fest.
+
+**🟢 🇩🇪 Die Ampel widerspricht sich nicht mehr.**
+
+- Bis 1.18 zeigte sie **gelb**, sobald ein fremdes Werkzeug im Spiel war — auch wenn alles perfekt eingestellt war. Der Text darunter sagte „das ist in Ordnung", die Ampel sagte „schau nach". Beides zugleich.
+- **Jetzt** sind **Erklärungen** und **Mängel** getrennt: Eine reine Erklärung färbt die Ampel nicht mehr. Bewertet wird, was tatsächlich eingestellt ist.
+- Und es wird **nur noch geprüft, was auf diesem Rechner auch wirkt**: Eine herumliegende `/etc/default/zramswap`, die gar nicht gelesen wird, löst keine Warnung mehr aus.
+
+**🔴🔴 🇩🇪 Das Mausrad verstellt keine Regler mehr.**
+
+- Beim Herunterrollen der Seite fuhr der Zeiger über einen Schieberegler — und **verstellte ihn**, unbemerkt. Im Test sprangen dabei alle drei Regler auf **0**: zram aus, swappiness 0, Swap-Datei gelöscht. Wer danach „Übernehmen" drückt, ändert etwas, das er nie wollte.
+- Das widersprach dem eigenen Versprechen im Fensterkopf: *„Geändert wird nur, was du ausdrücklich bestätigst."*
+
+**🟢 🇩🇪 Kein unnötiger Neustart mehr.**
+
+- Steht schon alles richtig, tut der Übernehmen-Knopf jetzt **nichts** — statt jedes Mal eine neue Sicherung anzulegen und zram neu zu starten. Ein zram-Neustart schiebt alles Ausgelagerte durch den Arbeitsspeicher; auf einem Server mit 30 Diensten will das niemand ohne Grund.
+- Umgekehrt: Stimmt die Datei, hinkt aber das Gerät hinterher, wird **nur das Gerät** neu angelegt — die Datei bleibt unberührt.
+
+**🔴 🇩🇪 Der Rückgängig-Knopf funktioniert jetzt überall.**
+
+- Er startete bisher immer `zramswap` neu — den Dienst des *einen* Werkzeugs. Auf den anderen Rechnern wurde die Datei zwar zurückgespielt, aber der falsche Dienst neu gestartet: **Die Rücknahme wirkte gar nicht.**
+- Dazu fehlte `systemctl daemon-reload`. Beides ist behoben und in beide Richtungen am lebenden System bewiesen: 2,0 → 7,6 GiB und zurück, ohne einen einzigen Dienstausfall.
+
+---
+
+**🔴🔴 🇬🇧 The program now operates ALL THREE zram tools — not just one.**
+
+- **Up to 1.18** it disabled its buttons on machines running `systemd-zram-generator` or `rpi-swap` and could only watch. Across a fleet of six machines that was **half of them**.
+- **Now** it writes to the settings file of whichever tool is actually in charge (`/etc/default/zramswap`, `/etc/systemd/zram-generator.conf` or `/etc/rpi/swap.conf`), and restarts the matching service. **Only ever one** — two competing setups still cannot happen.
+- Backup and undo apply everywhere. The main file is edited rather than a drop-in, because only then can the undo button take it back.
+- For `rpi-swap`, `FixedSizeMiB` is set — measured, not assumed: `RamMultiplier=1` alone hits a built-in 2048 MiB cap.
+
+**🟢 🇬🇧 The traffic light no longer contradicts itself.** Explanations and actual problems are now separate; a plain explanation no longer turns it amber. Only settings that take effect on this machine are checked.
+
+**🔴🔴 🇬🇧 The mouse wheel no longer moves the sliders.** Scrolling the page over a slider silently changed it — in testing all three jumped to 0.
+
+**🟢 🇬🇧 No pointless restarts.** If everything is already correct, Apply does nothing. If only the device lags behind the file, only the device is recreated.
+
+**🔴 🇬🇧 Undo now works everywhere.** It always restarted `zramswap`, so on other machines the file was restored but the wrong service reloaded — the undo had no effect. `systemctl daemon-reload` was missing too. Both fixed and proven on a live machine in both directions.
+
+---
+
 ## 1.18 — 22. Juli 2026
 
 **🔴 🇩🇪 Ein drittes zram-Werkzeug erkannt: `rpi-swap` auf Raspberry Pi OS.**

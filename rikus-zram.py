@@ -38,7 +38,7 @@ gi.require_version('Gtk', '3.0')
 # Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
 from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.18'
+VERSION = '1.19'
 
 
 # ---------------------------------------------------------------------------
@@ -624,7 +624,7 @@ def dienst_befehl(sys_):
     return 'service zramswap restart'
 
 
-def zram_neu_anlegen(sys_):
+def zram_neu_anlegen(sys_, gen=None):
     """zram wirklich auf die neue GROESSE bringen — nicht nur die Datei aendern.
 
     🔴🔴 Am 22.07.2026 auf pi5 gemessen: Nach `PERCENT=100` in der Datei und
@@ -648,14 +648,26 @@ def zram_neu_anlegen(sys_):
     liegt. Deshalb wird vorher geprueft (siehe swap_pruefen) und im
     Zweifel nur die Datei geaendert — dann greift es beim naechsten Start.
     """
-    return [
+    zeilen = []
+    if gen and gen.get('aktiv'):
+        # 🔴🔴 v1.19, beim Rueckweg-Test auf pi4 aufgeflogen:
+        # Die beiden fremden Werkzeuge legen ihre Swap-Einheit ueber einen
+        # systemd-GENERATOR an. Generatoren laufen nur beim Systemstart —
+        # und bei »daemon-reload«. Ohne diese Zeile spielte der
+        # Rueckgaengig-Knopf zwar die Datei zurueck, das Geraet blieb aber
+        # auf der neuen Groesse: Datei sagte 2 GiB, zram lief mit 7,6.
+        # Genau die Sorte halber Rueckweg, vor der Gesetz 2 warnt.
+        zeilen.append('systemctl daemon-reload')
+    return zeilen + [
         '# zram sauber neu anlegen (Groesse aendert sich sonst NICHT, s. Doku)',
         'for g in /sys/block/zram*/; do',
         '  d=/dev/$(basename "$g")',
         '  grep -q "^$d " /proc/swaps && swapoff "$d" || true',
         '  [ -w "$g/reset" ] && echo 1 > "$g/reset" || true',
         'done',
-        dienst_befehl(sys_) + ' || true',
+        # Der Neustart-Befehl haengt vom zustaendigen Werkzeug ab — seit
+        # v1.19 kann das auch ein fremdes sein (siehe fremde_zram_aenderung).
+        ((gen or {}).get('neustart') or dienst_befehl(sys_)) + ' || true',
     ]
 
 
@@ -767,6 +779,137 @@ def zram_lage(einst, zram, sys_):
     }
 
 
+FREMDE_SICHERUNGSORTE = ('/etc/systemd/zram-generator.conf',
+                         '/etc/rpi/swap.conf')
+
+
+# Eine eindeutige Markierung statt Zeichenketten-Raterei: skript_bauen()
+# erkennt daran, dass NUR das Geraet neu angelegt werden soll, und ersetzt
+# die Zeile durch die richtigen Befehle (die den Dienstnamen brauchen).
+MARKE_NEU_ANLEGEN = '# rikuszram:nur-neu-anlegen'
+
+
+def _nur_neu_anlegen(gen, ziel_prozent):
+    """Die Datei stimmt schon — nur das GERAET hinkt hinterher.
+
+    Tritt auf, wenn jemand die Datei von Hand geaendert und nicht neu
+    gestartet hat. Dann waere es falsch, die Datei nochmal zu schreiben
+    (unnoetige Sicherung), aber genauso falsch, nichts zu tun: Die Ampel
+    zeigt gelb („zram ist kleiner als es sein koennte") und der
+    Uebernehmen-Knopf sagte „nichts zu tun" — schon wieder ein Widerspruch.
+    """
+    return [(t(f'zram neu anlegen, damit die eingestellten {ziel_prozent} % '
+               'auch wirklich gelten (die Datei stimmt schon, das Gerät '
+               'hinkt noch hinterher)',
+               f'recreate zram so the configured {ziel_prozent} % actually '
+               'take effect (the file is already correct, the device lags '
+               'behind)'),
+             [MARKE_NEU_ANLEGEN], None)]
+
+
+def fremde_zram_aenderung(gen, ziel_prozent, ram, datum, zram=None):
+    """Die zram-GROESSE bei einem FREMDEN Werkzeug aendern.
+
+    🔴🔴 Neu in v1.19 — und die Antwort auf Gilberts Frage vom 22.07.2026:
+    *„wieso kann das programm das nicht?"*
+
+    Bis v1.18 hielt sich das Programm bei fremden Werkzeugen komplett heraus
+    und sperrte die Knoepfe. Das war zu vorsichtig: Auf der HAELFTE von
+    Gilberts Rechnern konnte es dann nur zusehen, und er musste von Hand
+    nachhelfen — genau das, was dieses Programm ueberfluessig machen soll.
+
+    Alle drei Werkzeuge tun dasselbe. Sie unterscheiden sich nur in
+    **zwei** Punkten: welche Datei, und welcher Befehl danach.
+
+        zram-tools              /etc/default/zramswap
+                                PERCENT=<n>              service zramswap restart
+        systemd-zram-generator  /etc/systemd/zram-generator.conf
+                                zram-size = ram * <n/100>
+                                                         systemctl restart
+                                                         systemd-zram-setup@zram0
+        rpi-swap                /etc/rpi/swap.conf
+                                [Zram] FixedSizeMiB=<mb> systemctl restart
+                                                         dev-zram0.swap
+
+    ⚠️ Es wird IMMER die Hauptdatei geaendert, nie eine Zusatzdatei
+    („drop-in"). Grund: Nur so greift der Sicherungs- und Rueckgaengig-Weg,
+    den das Programm seit v1.0 benutzt (`cp -a` → `.bak-rikuszram-<datum>`).
+    Eine Zusatzdatei koennte man zwar auch anlegen, aber der Rueckgaengig-
+    Knopf koennte sie nicht wieder entfernen — und ein Rueckweg, den es nur
+    auf dem Papier gibt, ist keiner (Gesetz 2).
+    """
+    d = gen['pfad']
+    g = gen['werte']
+    soll_bytes = ram['gesamt'] * ziel_prozent / 100
+    ist_bytes = sum(x['groesse'] for x in (zram or []))
+    # Weicht das GERAET um mehr als 10 % vom Ziel ab, muss es neu angelegt
+    # werden — auch wenn die Datei schon richtig ist (der v1.17-Fall: Datei
+    # sagt 100 %, Geraet steht noch auf dem alten Wert bis zum Neustart).
+    geraet_passt = ist_bytes > 0 and abs(ist_bytes - soll_bytes) <= soll_bytes * 0.1
+
+    zeilen = [f'[ -f "{d}" ] && cp -a "{d}" "{d}.bak-{STEMPEL}-{datum}" || true']
+
+    if gen['name'] == 'systemd-zram-generator':
+        wert = 'ram' if ziel_prozent >= 100 else f'ram * {ziel_prozent / 100:.2f}'
+        # 🔴 Steht es schon so in der Datei UND stimmt das Geraet: NICHTS tun.
+        # Sonst legte jeder Klick eine neue Sicherung an und startete zram neu
+        # — und ein zram-Neustart schiebt alles Ausgelagerte durch den
+        # Arbeitsspeicher. Auf rk-pr01 mit 30 Diensten will das niemand.
+        if str(g.get('zram-size', '')).replace(' ', '') == wert.replace(' ', ''):
+            return _nur_neu_anlegen(gen, ziel_prozent) if not geraet_passt else []
+        text = t(f'die zram-Größe in {d} auf {ziel_prozent} % setzen '
+                 f'(zram-size = {wert})',
+                 f'set the zram size in {d} to {ziel_prozent} % '
+                 f'(zram-size = {wert})')
+        zeilen += [
+            # Abschnitt [zram0] anlegen, falls die Datei fehlt oder leer ist.
+            f'[ -f "{d}" ] || printf "%s\\n" "# von Rikus Zram angelegt" '
+            f'"[zram0]" > "{d}"',
+            f'grep -q "^\\[zram0\\]" "{d}" || printf "%s\\n" "[zram0]" >> "{d}"',
+            # Vorhandene Zeile ersetzen, sonst hinter [zram0] einfuegen.
+            f'if grep -q "^[[:space:]]*zram-size" "{d}"; then',
+            f'  sed -i "s|^[[:space:]]*zram-size.*|zram-size = {wert}|" "{d}"',
+            'else',
+            f'  sed -i "0,/^\\[zram0\\]/s||[zram0]\\nzram-size = {wert}|" "{d}"',
+            'fi',
+        ]
+        # (Das noetige »systemctl daemon-reload« haengt zram_neu_anlegen an —
+        #  es wird nach jeder Groessenaenderung ohnehin aufgerufen. Zweimal
+        #  waere harmlos, aber unnoetig.)
+
+    elif gen['name'] == 'rpi-swap':
+        # rpi-swap rechnet in MiB. RamMultiplier allein genuegt NICHT:
+        # MaxSizeMiB deckelt standardmaessig bei 2048 — genau der Grund,
+        # warum pi4 bei 2 GiB haengenblieb, obwohl 7,6 GiB RAM da sind.
+        mb = max(64, int(ram['gesamt'] / 1024**2 * ziel_prozent / 100))
+        if str(g.get('FixedSizeMiB', '')) == str(mb):
+            return _nur_neu_anlegen(gen, ziel_prozent) if not geraet_passt else []
+        text = t(f'die zram-Größe in {d} auf {ziel_prozent} % setzen '
+                 f'({mb} MiB)',
+                 f'set the zram size in {d} to {ziel_prozent} % ({mb} MiB)')
+        # ⚠️ GEMESSEN am 22.07.2026 auf pi4, nicht angenommen — mit dem
+        # Rechenprogramm /usr/lib/rpi-swap/bin/rpi-desired-zram-size:
+        #     Standard                  -> 2048
+        #     FixedSizeMiB=7600         -> 7600
+        #     FixedSizeMiB=7600 + MaxSizeMiB=2048 -> 7600  (Fixed gewinnt)
+        #     RamMultiplier=1           -> 2048  (Deckel greift!)
+        # ➡️ FixedSizeMiB genuegt und ist der EINZIGE Weg, der sicher wirkt.
+        #    Ueber RamMultiplier waere man in den 2048er-Deckel gelaufen —
+        #    genau der Grund, warum pi4 trotz 7,6 GiB RAM bei 2 GiB stand.
+        #    MaxSizeMiB wird deshalb NICHT angefasst (eine Aenderung weniger).
+        zeilen += [
+            f'[ -f "{d}" ] || printf "%s\\n" "# von Rikus Zram angelegt" > "{d}"',
+            f'grep -q "^\\[Zram\\]" "{d}" || printf "%s\\n" "" "[Zram]" >> "{d}"',
+            f'sed -i "s|^[[:space:]]*FixedSizeMiB[[:space:]]*=.*|FixedSizeMiB={mb}|" "{d}"',
+            f'grep -q "^FixedSizeMiB=" "{d}" || '
+            f'sed -i "0,/^\\[Zram\\]/s||[Zram]\\nFixedSizeMiB={mb}|" "{d}"',
+        ]
+    else:
+        return []
+
+    return [(text, zeilen, d)]
+
+
 def swappiness_zieldatei(swp):
     """In WELCHE Datei schreiben wir?
     Gibt es schon eine, aendern wir DIESE — sonst haetten wir zwei Dateien,
@@ -776,14 +919,57 @@ def swappiness_zieldatei(swp):
     return f'/etc/sysctl.d/99-{STEMPEL}.conf', True
 
 
+def swappiness_aenderung(swp, ziel_swappiness, datum):
+    """Die swappiness-Schritte — seit v1.19 eigene Funktion, weil sie fuer
+    ALLE drei zram-Werkzeuge gleich ist. Sie haengt nicht am Werkzeug, denn
+    swappiness ist eine Kernel-Einstellung (`/etc/sysctl.d/`)."""
+    ziel, ist_neu = swappiness_zieldatei(swp)
+    text = t(f'swappiness von {swp["laufend"]} auf {ziel_swappiness} ändern',
+             f'change swappiness from {swp["laufend"]} to {ziel_swappiness}')
+    text += (t(f' (neue Datei {ziel})', f' (new file {ziel})') if ist_neu
+             else t(f' (in {os.path.basename(ziel)})',
+                    f' (in {os.path.basename(ziel)})'))
+    zeilen = []
+    if not ist_neu:
+        zeilen.append(f'cp -a "{ziel}" "{ziel}.bak-{STEMPEL}-{datum}"')
+        zeilen.append(
+            f'sed -i "s/^[[:space:]]*vm.swappiness[[:space:]]*=.*/'
+            f'vm.swappiness={ziel_swappiness}/" "{ziel}"')
+    else:
+        zeilen.append(
+            f'printf "%s\\n" "# von Rikus Zram angelegt" '
+            f'"vm.swappiness={ziel_swappiness}" > "{ziel}"')
+    zeilen.append('sysctl --system >/dev/null 2>&1')
+    return [(text, zeilen, ziel if not ist_neu else None)]
+
+
 def aenderungen_sammeln(sys_, swp, einst, ziel_prozent, ziel_swappiness,
-                        ziel_swap_gb=None, swap=None, platte=None, zram=None):
+                        ziel_swap_gb=None, swap=None, platte=None, zram=None,
+                        gen=None, ram=None):
     """Was soll geaendert werden? Liefert eine Liste in KLARTEXT (fuer den
     Trockenlauf) und die noetigen Shell-Zeilen."""
     schritte = []      # (klartext, shell-zeilen)
     datum = subprocess.run(['/usr/bin/date', '+%Y%m%d-%H%M%S'],
                            capture_output=True, text=True).stdout.strip()
     lage = zram_lage(einst, zram or [], sys_)
+
+    # --- Regelt hier ein FREMDES Werkzeug? Dann DESSEN Datei aendern --------
+    # 🔴 v1.19: Bis v1.18 stieg das Programm hier aus und sperrte die Knoepfe.
+    # Auf der Haelfte von Gilberts Rechnern konnte es dadurch nur zusehen.
+    # Jetzt bedient es alle drei Werkzeuge — aber immer nur EINES, naemlich
+    # das, das auf diesem Rechner tatsaechlich zustaendig ist. Zwei
+    # konkurrierende Einrichtungen kann so weiterhin nicht entstehen:
+    # der zram-tools-Zweig darunter wird uebersprungen.
+    if gen and gen['aktiv']:
+        if ram is None:
+            ram = ram_messen()
+        schritte += fremde_zram_aenderung(gen, ziel_prozent, ram, datum,
+                                          zram)
+        if swp['laufend'] != ziel_swappiness:
+            schritte += swappiness_aenderung(swp, ziel_swappiness, datum)
+        if ziel_swap_gb is not None and swap is not None and platte is not None:
+            schritte += swap_aenderung(ziel_swap_gb, swap, platte, datum)
+        return schritte, datum
 
     # --- 0. zram ERST EINRICHTEN, wenn es noch keins gibt --------------------
     # ⚠️ Das ist der Kern des Programms und der Grund, warum es gebaut wurde:
@@ -880,24 +1066,7 @@ def aenderungen_sammeln(sys_, swp, einst, ziel_prozent, ziel_swappiness,
 
     # --- 2. swappiness --------------------------------------------
     if swp['laufend'] != ziel_swappiness:
-        ziel, ist_neu = swappiness_zieldatei(swp)
-        text = t(f'swappiness von {swp["laufend"]} auf {ziel_swappiness} ändern',
-                 f'change swappiness from {swp["laufend"]} to {ziel_swappiness}')
-        text += (t(f' (neue Datei {ziel})', f' (new file {ziel})') if ist_neu
-                 else t(f' (in {os.path.basename(ziel)})',
-                        f' (in {os.path.basename(ziel)})'))
-        zeilen = []
-        if not ist_neu:
-            zeilen.append(f'cp -a "{ziel}" "{ziel}.bak-{STEMPEL}-{datum}"')
-            zeilen.append(
-                f'sed -i "s/^[[:space:]]*vm.swappiness[[:space:]]*=.*/'
-                f'vm.swappiness={ziel_swappiness}/" "{ziel}"')
-        else:
-            zeilen.append(
-                f'printf "%s\\n" "# von Rikus Zram angelegt" '
-                f'"vm.swappiness={ziel_swappiness}" > "{ziel}"')
-        zeilen.append('sysctl --system >/dev/null 2>&1')
-        schritte.append((text, zeilen, ziel if not ist_neu else None))
+        schritte += swappiness_aenderung(swp, ziel_swappiness, datum)
 
     # --- 3. Reserve auf der Platte (Regler 3) ------------------------------
     if ziel_swap_gb is not None and swap is not None and platte is not None:
@@ -1145,28 +1314,45 @@ def swap_pruefen(ziel_gb, swap, platte):
     return None
 
 
-def skript_bauen(schritte, sys_):
+def skript_bauen(schritte, sys_, gen=None):
     """Ein einziges Bash-Skript, das EINMAL mit Root-Rechten laeuft."""
     zeilen = ['#!/bin/bash', 'set -e',
               'export PATH=/sbin:/usr/sbin:/bin:/usr/bin']
+    nur_neu = False
     for _text, shell, _sicherung in schritte:
-        zeilen += shell
+        for z in shell:
+            if z == MARKE_NEU_ANLEGEN:
+                nur_neu = True
+            else:
+                zeilen.append(z)
     alle = [z for _t, sh, _s in schritte for z in sh]
+    if nur_neu:
+        zeilen += zram_neu_anlegen(sys_, gen)
+        zeilen.append('echo RIKUSZRAM-FERTIG')
+        return '\n'.join(zeilen) + '\n'
     # Den zram-Dienst NUR neu starten, wenn seine Einstellungen angefasst
     # wurden. Bei einer reinen Reserve-Änderung waere das unnoetig — und ein
     # Neustart schiebt alles Ausgelagerte kurz zurueck in den Arbeitsspeicher.
     # ⚠️ Nicht doppelt: beim Einrichten steht der Start schon in den Schritten.
     schon_gestartet = any('zramswap' in z and
                           ('restart' in z or 'start' in z) for z in alle)
-    if any('zramswap' in z for z in alle) and not schon_gestartet:
-        # ⚠️ Wurde die GROESSE geaendert (PERCENT/SIZE), genuegt ein einfacher
-        # Neustart NICHT — das Geraet ist belegt und behaelt seine alte Groesse
-        # bis zum naechsten Rechnerstart. Siehe zram_neu_anlegen().
-        groesse_geaendert = any(('PERCENT=' in z or 'SIZE=' in z) for z in alle)
+    # 🔴 v1.19: Auch die Dateien der beiden ANDEREN Werkzeuge zaehlen —
+    # sonst wuerde dort geschrieben und nie neu gestartet (die Aenderung
+    # haette erst nach einem Rechnerstart gewirkt).
+    fremd_beruehrt = any(o in z for z in alle for o in FREMDE_SICHERUNGSORTE)
+    if (any('zramswap' in z for z in alle) or fremd_beruehrt) \
+            and not schon_gestartet:
+        # ⚠️ Wurde die GROESSE geaendert, genuegt ein einfacher Neustart
+        # NICHT — das Geraet ist belegt und behaelt seine alte Groesse bis
+        # zum naechsten Rechnerstart. Siehe zram_neu_anlegen().
+        groesse_geaendert = any(
+            ('PERCENT=' in z or 'SIZE=' in z or 'zram-size' in z
+             or 'FixedSizeMiB' in z) for z in alle)
         if groesse_geaendert:
-            zeilen += zram_neu_anlegen(sys_)
+            zeilen += zram_neu_anlegen(sys_, gen)
         else:
-            zeilen.append(dienst_befehl(sys_) + ' || true')
+            zeilen.append(((gen or {}).get('neustart')
+                           or dienst_befehl(sys_)) + ' || true')
     zeilen.append('echo RIKUSZRAM-FERTIG')
     return '\n'.join(zeilen) + '\n'
 
@@ -1180,7 +1366,12 @@ def sicherungen_finden():
     """Alle Sicherungen, die dieses Programm angelegt hat (fuer Rueckgaengig)."""
     treffer = []
     for muster in ('/etc/default/zramswap.bak-%s-*' % STEMPEL,
-                   '/etc/sysctl.d/*.bak-%s-*' % STEMPEL):
+                   '/etc/sysctl.d/*.bak-%s-*' % STEMPEL,
+                   # seit v1.19 aendert das Programm auch die Dateien der
+                   # beiden anderen Werkzeuge — deren Sicherungen muessen
+                   # der Rueckgaengig-Knopf genauso finden.
+                   '/etc/systemd/zram-generator.conf.bak-%s-*' % STEMPEL,
+                   '/etc/rpi/swap.conf.bak-%s-*' % STEMPEL):
         treffer += glob.glob(muster)
     return sorted(treffer)
 
@@ -1205,50 +1396,51 @@ def bewerten(ram, zram, swap, swp, einst, empf=None, gen=None):
     „alles gut" sagt, waehrend die Haelfte verschenkt wird, ist schlimmer
     als gar keines — es beendet die Suche.
     """
-    hinweise = []
+    hinweise = []   # ⚠️ MAENGEL — jeder faerbt die Ampel gelb
+    infos = []      # ℹ️ reine ERKLAERUNGEN — faerben NICHT
+    # 🔴 Die Trennung kam mit v1.19 und geht auf Gilbert zurueck
+    # (22.07.2026: *„jedesmal wiederspricht du dich"*). Vorher landete jede
+    # Erklaerung im selben Topf wie ein echter Mangel — und weil die Ampel
+    # „gelb, wenn irgendein Hinweis da ist" rechnet, stand sie gelb, waehrend
+    # der Text darunter „Das ist in Ordnung" sagte. Genau dieser Widerspruch.
     zram_laeuft = len(zram) > 0
     swap_platte = [s for s in swap if not s['ist_zram']]
 
-    # --- Regelt hier ein ANDERES Werkzeug? (siehe generator_messen) --------
-    # Steht ganz vorne, weil in diesem Fall JEDE andere Empfehlung in die
-    # Irre fuehren wuerde: Das Programm koennte zwar messen, aber sein
-    # Aendern wuerde eine zweite, konkurrierende Einrichtung erzeugen.
+    # --- Regelt hier ein ANDERES Werkzeug? -----------------------------
+    # 🔴 GEAENDERT in v1.19. Bis v1.18 stieg die Ampel hier mit **gelb** aus
+    # und pruefte gar nichts weiter — mit der Begruendung, das Programm duerfe
+    # ohnehin nichts aendern. Seit v1.19 darf es (siehe fremde_zram_aenderung),
+    # also waere gelb schlicht falsch: Auf Gilberts debian und rk-pr01 war
+    # alles richtig eingestellt, und die Ampel sagte trotzdem gelb.
+    # Gilbert dazu am 22.07.2026: *„jedesmal wiederspricht du dich"* — zu Recht.
+    # ➡️ Jetzt ist das zustaendige Werkzeug nur noch ein HINWEIS. Bewertet
+    #    wird, was tatsaechlich eingestellt ist — genau wie ueberall sonst.
     if gen and gen['aktiv']:
         g = gen['werte']
         wie = []
-        if g.get('zram-size'): wie.append(t(f'Groesse {sicher(g["zram-size"])}',
-                                            f'size {sicher(g["zram-size"])}'))
-        if g.get('compression-algorithm'):
-            wie.append(t(f'Verfahren {sicher(g["compression-algorithm"])}',
-                         f'algorithm {sicher(g["compression-algorithm"])}'))
-        if g.get('swap-priority'): wie.append(t(f'Prioritaet {sicher(g["swap-priority"])}',
-                                                f'priority {sicher(g["swap-priority"])}'))
+        for schluessel, dt, en in (
+                ('zram-size', 'Größe', 'size'),
+                ('FixedSizeMiB', 'Größe', 'size'),
+                ('compression-algorithm', 'Verfahren', 'algorithm'),
+                ('swap-priority', 'Priorität', 'priority')):
+            if g.get(schluessel):
+                wie.append(t(f'{dt} {sicher(g[schluessel])}',
+                             f'{en} {sicher(g[schluessel])}'))
         detail = (' (' + ' · '.join(wie) + ')') if wie else ''
         name = sicher(gen.get('name') or 'ein anderes Werkzeug')
-        neustart = gen.get('neustart') or 'systemctl restart <dienst>'
-        return ('gelb',
-                t('Auf diesem Rechner regelt ein anderes Werkzeug das zram.',
-                  'Another tool manages zram on this machine.'),
-                [t(f'zram wird hier von <b>{name}</b> '
-                   f'eingestellt{detail} — nicht von <tt>zram-tools</tt>, das '
-                   f'dieses Programm bedient. Die Einstellungen stehen in '
-                   f'<tt>{sicher(gen["pfad"])}</tt>.',
-                   f'zram here is configured by <b>{name}</b>'
-                   f'{detail} — not by <tt>zram-tools</tt>, which this program '
-                   f'operates. The settings live in '
-                   f'<tt>{sicher(gen["pfad"])}</tt>.'),
-                 t('<b>Dieses Programm ändert hier nichts.</b> Es würde sonst '
-                   'eine zweite, konkurrierende Einrichtung anlegen — zwei '
-                   'Werkzeuge für dieselbe Sache vertragen sich nicht. '
-                   'Anschauen und Messen funktioniert weiterhin.',
-                   '<b>This program changes nothing here.</b> Doing so would '
-                   'create a second, competing setup — two tools for the same '
-                   'job do not get along. Viewing and measuring still work.'),
-                 t('Wer die Einstellung ändern will, bearbeitet die Datei oben '
-                   'von Hand und lädt sie mit <tt>systemctl restart '
-                   'systemd-zram-setup@zram0</tt> neu.',
-                   'To change it, edit the file above by hand and reload with '
-                   '<tt>systemctl restart systemd-zram-setup@zram0</tt>.')])
+        infos.append(t(
+            f'Auf diesem Rechner regelt <b>{name}</b> das zram{detail} — '
+            f'nicht <tt>zram-tools</tt>. Die Einstellungen stehen in '
+            f'<tt>{sicher(gen["pfad"])}</tt>. '
+            f'<b>Das ist in Ordnung:</b> Dieses Programm bedient seit Fassung '
+            f'1.19 auch dieses Werkzeug — mit Sicherung und Rückgängig-Knopf '
+            f'wie überall. Es legt nie eine zweite Einrichtung an.',
+            f'On this machine <b>{name}</b> manages zram{detail} — not '
+            f'<tt>zram-tools</tt>. Its settings live in '
+            f'<tt>{sicher(gen["pfad"])}</tt>. <b>That is fine:</b> since '
+            f'version 1.19 this program operates that tool as well — with a '
+            f'backup and the undo button as everywhere else. It never creates '
+            f'a second setup.'))
 
     if not zram_laeuft and not swap:
         return ('rot',
@@ -1264,12 +1456,15 @@ def bewerten(ram, zram, swap, swp, einst, empf=None, gen=None):
                    'You do not need a terminal for that.')])
 
     if not zram_laeuft:
-        if einst['vorhanden']:
+        # Bei fremdem Werkzeug auf DESSEN Datei zeigen — /etc/default/zramswap
+        # kann hier zwar herumliegen, wird aber gar nicht gelesen.
+        _pfad = sicher((gen or {}).get('pfad') or einst['pfad'])
+        if einst['vorhanden'] or (gen and gen['aktiv']):
             hinweise.append(t(
-                f'zram ist in {sicher(einst["pfad"])} eingerichtet, läuft aber '
+                f'zram ist in {_pfad} eingerichtet, läuft aber '
                 'gerade NICHT. Auf der nächsten Seite kann dieses Programm den '
                 'Dienst einschalten und starten.',
-                f'zram is configured in {sicher(einst["pfad"])} but is NOT '
+                f'zram is configured in {_pfad} but is NOT '
                 'running. On the next page this program can switch the service '
                 'on and start it.'))
         else:
@@ -1281,7 +1476,12 @@ def bewerten(ram, zram, swap, swp, einst, empf=None, gen=None):
                 'this program can do it for you: install the package, '
                 'configure it, switch it on.'))
 
-    w = einst['werte']
+    # 🔴 v1.19: Nur pruefen, was hier auch WIRKT. Auf pi4 lag eine
+    # /etc/default/zramswap mit SIZE=512 herum, die rpi-swap gar nicht liest —
+    # das Programm warnte trotzdem davor. Ein Hinweis auf eine wirkungslose
+    # Datei ist schlimmer als keiner: Er schickt den Nutzer auf die falsche
+    # Faehrte und macht die Ampel ohne Grund gelb.
+    w = {} if (gen and gen['aktiv']) else einst['werte']
     if w.get('SIZE') and w.get('PERCENT'):
         ist = zram[0]['groesse'] if zram_laeuft else 0
         hinweise.append(t(
@@ -1360,7 +1560,7 @@ def bewerten(ram, zram, swap, swp, einst, empf=None, gen=None):
         return ('gelb',
                 t('Es läuft Swap, aber kein zram.',
                   'Swap is active, but zram is not.'),
-                hinweise + [t(
+                hinweise + infos + [t(
                     'zram würde den Rechner bei vollem Speicher deutlich '
                     'flüssiger halten.',
                     'zram would keep the machine noticeably smoother when '
@@ -1369,10 +1569,11 @@ def bewerten(ram, zram, swap, swp, einst, empf=None, gen=None):
         return ('gelb',
                 t('zram läuft — es gibt aber Punkte zum Anschauen.',
                   'zram is running — but there are things worth a look.'),
-                hinweise)
+                hinweise + infos)
+    # ⭐ Erklaerungen allein machen nichts gelb (v1.19, siehe oben).
     return ('gruen',
             t('Alles in Ordnung. zram läuft sauber.',
-              'All good. zram is running properly.'), [])
+              'All good. zram is running properly.'), infos)
 
 
 # ---------------------------------------------------------------------------
@@ -1580,6 +1781,18 @@ class RikusZram(Gtk.Window):
         skala.set_digits(0)
         skala.set_hexpand(True)
         skala.set_can_focus(False)
+        # 🔴🔴 MAUSRAD ABFANGEN (v1.19, beim Pruefen selbst hineingetappt):
+        # Ein GTK-Schieberegler nimmt das Mausrad entgegen und VERSTELLT SICH.
+        # Wer die Seite herunterrollt und dabei ueber einen Regler faehrt,
+        # aendert ihn, ohne es zu merken. Beim Fototest am 22.07.2026 sprang
+        # Regler 3 dabei von 2 GiB auf **0** — das haette die Swap-Datei
+        # entfernt. Genau die Art stille Aenderung, die dieses Programm
+        # verhindern soll ("Geaendert wird nur, was du ausdruecklich
+        # bestaetigst" steht im Kopf des Fensters).
+        # ➡️ True = Ereignis ist erledigt, der Regler ruehrt sich nicht;
+        #    das Rollen der Seite laeuft normal weiter.
+        skala.add_events(Gdk.EventMask.SCROLL_MASK)
+        skala.connect('scroll-event', lambda *_: True)
         # Markierungen: wo stehst du gerade, was ist empfohlen
         skala.add_mark(soll, Gtk.PositionType.BOTTOM,
                        t(f'empfohlen: {soll}', f'recommended: {soll}'))
@@ -2157,27 +2370,29 @@ class RikusZram(Gtk.Window):
         knoepfe.pack_start(k2, True, True, 0)
         box.pack_start(knoepfe, False, False, 4)
 
-        # --- Fremdes Werkzeug: Knöpfe SPERREN, nicht nur warnen ------------
-        # Bauregel: „Was nicht geht, wird gesperrt — nicht mit Kleingedrucktem
-        # erklärt." Läuft hier systemd-zram-generator, würde jede Änderung
-        # eine zweite, konkurrierende Einrichtung anlegen. Die Ampel auf
-        # Seite 1 erklärt den Grund ausführlich; hier steht die Kurzfassung
-        # direkt bei den grauen Knöpfen, damit niemand rätselt.
+        # --- Fremdes Werkzeug: BEDIENEN statt sperren (v1.19) --------------
+        # Bis v1.18 waren die Knöpfe hier grau. Gilberts Frage vom 22.07.2026:
+        # *„wieso kann das programm das nicht?"* — Es konnte es sehr wohl,
+        # ich hatte es ihm nur verboten. Auf der Hälfte seiner Rechner durfte
+        # das Programm dadurch nur zusehen, und er musste von Hand nachhelfen.
+        # Jetzt schreibt es in die Datei des Werkzeugs, das hier tatsächlich
+        # zuständig ist — nie in zwei zugleich. Der Hinweis bleibt, damit
+        # jeder sieht, WELCHE Datei gleich angefasst wird.
         gen = self.daten.get('gen') or {}
         if gen.get('aktiv'):
-            for knopf in (k1, k2):
-                knopf.set_sensitive(False)
             wer = sicher(gen.get('name') or 'ein anderes Werkzeug')
+            wo = sicher(gen.get('pfad') or '')
             self._zeile(box, t(
-                f'<b>Ändern ist hier gesperrt.</b> Auf diesem Rechner regelt '
-                f'<b>{wer}</b> das zram, nicht das Werkzeug, '
-                f'das dieses Programm bedient. Eine Änderung von hier aus '
-                f'würde eine zweite, konkurrierende Einrichtung anlegen. '
-                f'Die Übersicht auf der ersten Seite erklärt es genauer.',
-                f'<b>Changing is disabled here.</b> On this machine '
-                f'<b>{wer}</b> manages zram, not the tool this '
-                f'program operates. Changing from here would create a second, '
-                f'competing setup. The overview page explains it in detail.'))
+                f'Auf diesem Rechner regelt <b>{wer}</b> das zram — nicht '
+                f'<tt>zram-tools</tt>. Das ist kein Problem: Das Programm '
+                f'ändert dann <b>dessen</b> Einstellungsdatei '
+                f'<tt>{wo}</tt>, mit Sicherung und Rückgängig-Knopf wie '
+                f'überall. Es wird nie eine zweite Einrichtung angelegt.',
+                f'On this machine <b>{wer}</b> manages zram — not '
+                f'<tt>zram-tools</tt>. That is fine: the program then edits '
+                f'<b>its</b> settings file <tt>{wo}</tt>, with a backup and '
+                f'the undo button as everywhere else. A second setup is '
+                f'never created.'))
 
         sich = sicherungen_finden()
         if sich:
@@ -2247,7 +2462,7 @@ class RikusZram(Gtk.Window):
         schritte, _datum = aenderungen_sammeln(
             self.daten['sys'], self.daten['swp'], self.daten['einst'],
             ziel_p, ziel_s, ziel_sw, self.daten['swap'], self.daten['platte'],
-            self.daten['zram'])
+            self.daten['zram'], self.daten.get('gen'), self.daten.get('ram'))
 
         if not schritte:
             self._dialog(Gtk.MessageType.INFO,
@@ -2299,7 +2514,8 @@ class RikusZram(Gtk.Window):
         if antwort != Gtk.ResponseType.OK:
             return
 
-        skript = skript_bauen(schritte, self.daten['sys'])
+        skript = skript_bauen(schritte, self.daten['sys'],
+                              self.daten.get('gen'))
         befehl = root_praefix() + ['/bin/bash', '-c', skript]
         try:
             # Beim Nachinstallieren mehr Zeit: apt muss die Paketliste holen
@@ -2401,7 +2617,23 @@ class RikusZram(Gtk.Window):
         for ziel, quelle in neuste.items():
             zeilen.append(f'cp -a "{quelle}" "{ziel}"')
         zeilen.append('sysctl --system >/dev/null 2>&1')
-        zeilen.append(dienst_befehl(self.daten['sys']) + ' || true')
+        # 🔴🔴 v1.19: Hier stand bis eben stur »zramswap« — der Dienst des
+        # EINEN Werkzeugs. Auf einem Rechner mit systemd-zram-generator oder
+        # rpi-swap waere die Datei zwar zurueckgespielt, aber der falsche
+        # Dienst neu gestartet worden: Die Ruecknahme haette gar nicht
+        # gewirkt. Ein Rueckweg, den es nur auf dem Papier gibt, ist keiner
+        # (Gesetz 2) — und man merkt es erst, wenn man ihn braucht.
+        gen = self.daten.get('gen') or {}
+        groesse_dabei = any(
+            o in ziel for ziel in neuste
+            for o in ('zramswap',) + FREMDE_SICHERUNGSORTE)
+        if groesse_dabei:
+            # Auch beim Zuruecknehmen aendert sich die GROESSE — und die
+            # aendert sich nur, wenn das Geraet vorher freigegeben wird.
+            zeilen += zram_neu_anlegen(self.daten['sys'], gen)
+        else:
+            zeilen.append((gen.get('neustart')
+                           or dienst_befehl(self.daten['sys'])) + ' || true')
         zeilen.append('echo RIKUSZRAM-FERTIG')
 
         befehl = root_praefix() + ['/bin/bash', '-c', '\n'.join(zeilen)]
