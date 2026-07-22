@@ -26,7 +26,7 @@ The catch: configuring this means typing commands and editing system files. Riku
 
 **No terminal needed, in three steps:**
 
-1. **[Download the file](https://github.com/Zahnschmerz/rikus-zram/releases/latest/download/rikus-zram-neueste.deb)** — it is called **`rikus-zram-neueste.deb`** and lands in your **Downloads** folder.
+1. **[Download the file](https://github.com/Zahnschmerz/rikus-zram/releases/latest)** — it is called **`rikus-zram_<release>_all.deb`** (the number is the release) and lands in your **Downloads** folder.
 2. In your **Downloads** folder, **double-click** it → **"Install Package"** → enter your password.
 3. Start it: menu under *System* → **Rikus Zram**.
 
@@ -37,7 +37,7 @@ The catch: configuring this means typing commands and editing system files. Riku
 sudo apt install ~/Downloads/rikus-zram*.deb
 ```
 
-Works from any folder. The `*` matches **any** of the offered files — versioned or `rikus-zram-neueste.deb` — and stays correct for future releases. Use `apt install`, not `dpkg -i`.
+Works from any folder. The `*` matches **any** release and stays correct for future ones. Use `apt install`, not `dpkg -i`.
 </details>
 
 **Runs on:** Debian, Ubuntu, Linux Mint, LMDE, MX Linux, antiX, Zorin, Pop!\_OS and relatives.

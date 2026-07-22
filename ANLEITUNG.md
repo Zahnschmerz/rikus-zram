@@ -39,7 +39,7 @@ Das Programm läuft mit **systemd** und mit **SysVinit** (also auch auf MX Linux
 Dafür brauchst du **kein Terminal**.
 
 **Schritt 1 — Herunterladen.**
-Öffne die Download-Seite und klicke auf die Datei **`rikus-zram-neueste.deb`**:
+Öffne die Download-Seite und klicke auf die Datei, die mit **`rikus-zram_`** anfängt und auf **`.deb`** endet (z. B. `rikus-zram_1.10_all.deb` — die Zahl ist die Fassung):
 
 👉 **https://github.com/Zahnschmerz/rikus-zram/releases/latest**
 
@@ -59,7 +59,7 @@ Dieser eine Befehl genügt — er funktioniert aus **jedem** Ordner heraus:
 sudo apt install ~/Downloads/rikus-zram*.deb
 ```
 
-Das `*` steht für den wechselnden Teil des Dateinamens. Der Befehl passt damit auf **jede** angebotene Datei — egal ob du `rikus-zram_1.6_all.deb` oder `rikus-zram-neueste.deb` geladen hast — und bleibt auch bei künftigen Fassungen richtig.
+Das `*` steht für den wechselnden Teil des Dateinamens. Der Befehl passt damit auf **jede** angebotene Datei — unabhängig davon, welche Fassung du geladen hast — und bleibt auch bei künftigen Fassungen richtig.
 
 ⚠️ Bitte `apt install` benutzen, **nicht** `dpkg -i`: Nur `apt` holt fehlende Bausteine von selbst nach.
 

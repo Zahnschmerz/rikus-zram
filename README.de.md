@@ -26,7 +26,7 @@ Der Haken: Einstellen lässt sich das bisher **nur über getippte Befehle und da
 
 **Ohne Terminal, in drei Schritten:**
 
-1. **[Datei herunterladen](https://github.com/Zahnschmerz/rikus-zram/releases/latest/download/rikus-zram-neueste.deb)** — sie heißt **`rikus-zram-neueste.deb`** und landet in deinem Ordner **Downloads**.
+1. **[Datei herunterladen](https://github.com/Zahnschmerz/rikus-zram/releases/latest)** — sie heißt **`rikus-zram_<fassung>_all.deb`** (die Zahl im Namen ist die Fassung) und landet in deinem Ordner **Downloads**.
 2. Im Ordner **Downloads** die Datei **doppelt anklicken** → **„Paket installieren"** → Passwort eingeben.
 3. Starten: Startmenü unter *System* → **Rikus Zram**.
 
@@ -37,7 +37,7 @@ Der Haken: Einstellen lässt sich das bisher **nur über getippte Befehle und da
 sudo apt install ~/Downloads/rikus-zram*.deb
 ```
 
-Funktioniert aus jedem Ordner. Das `*` passt auf **jede** angebotene Datei — mit Versionsnummer oder `rikus-zram-neueste.deb` — und bleibt auch künftig richtig. Bitte `apt install` nehmen, nicht `dpkg -i`.
+Funktioniert aus jedem Ordner. Das `*` passt auf **jede** Fassung und bleibt auch künftig richtig. Bitte `apt install` nehmen, nicht `dpkg -i`.
 </details>
 
 **Läuft auf:** Debian, Ubuntu, Linux Mint, LMDE, MX Linux, antiX, Zorin, Pop!\_OS und Verwandten.

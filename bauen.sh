@@ -131,10 +131,25 @@ Zum Veroeffentlichen — bitte genau so, mit ALLEN DREI Dateien:
     "$PAKET" "${PAKET}.sha256" "$NEUESTE" \\
     --title "Rikus Zram $VERSION" --latest --notes-file <textdatei>
 
-Danach PRUEFEN, ob der Download-Knopf der Webseite wirklich laedt:
+Dann die WEBSEITE nachziehen — dort stehen drei Dinge, die sich mit
+jeder Fassung aendern (auf pi5, /home/pi/zram-site/):
 
-  curl -sIL -o /dev/null -w '%{http_code}\\n' \\
-    https://github.com/Zahnschmerz/rikus-zram/releases/latest/download/$NEUESTE
+  1. Versionsangabe   "Version $VERSION ansehen"
+  2. Pruefsumme       $(cut -c1-32 "${PAKET}.sha256")...
+  3. Download-Knopf   .../releases/latest/download/$PAKET
+     ⚠️ Der Knopf zeigt bewusst auf den Dateinamen MIT Versionsnummer,
+        damit man im Ordner "Downloads" sieht, was man geladen hat.
+        Wird er vergessen, zeigt er auf eine Datei, die es an der neuen
+        Release nicht gibt -> 404.
 
-  -> muss 200 sagen. Sagt es 404, fehlt $NEUESTE an der Release.
+ZULETZT: den Knopf der LIVE-Seite pruefen. Dieser Befehl liest die
+Adresse aus der Seite selbst — er faellt also auch dann auf, wenn dort
+irgendein anderer Dateiname steht:
+
+  L=\$(curl -s https://zram.rikus.info/ \\
+       | grep -oE 'https://[^"]*releases/latest/download/[^"]*')
+  echo "\$L"; curl -sIL -o /dev/null -w '%{http_code}\\n' "\$L"
+
+  -> muss 200 sagen. Sagt es 404, zeigt der Knopf ins Leere und
+     NIEMAND kann das Programm ueber die Webseite herunterladen.
 ENDE
