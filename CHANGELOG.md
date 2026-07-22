@@ -5,6 +5,35 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.20 — 22. Juli 2026
+
+**🔴 🇩🇪 Der Installationsbefehl in der Anleitung konnte die FALSCHE Fassung installieren.**
+
+- Die Anleitung sagte bisher `sudo apt install ~/Downloads/rikus-zram*.deb`. Der Stern überlässt es der Kommandozeile, welche Datei gemeint ist — und **`bash` sortiert alphabetisch**: dort steht **1.9 hinter 1.19**. Liegen beide im Downloads-Ordner, gewinnt die zuletzt genannte.
+- **Nachgemessen am 22.07.2026 in einem frischen Debian 13:** Der Stern-Befehl installierte die **alte 1.9** statt der neuen 1.19. Genau die Falle, in die ein Anfänger mit zwei Downloads läuft — und niemand merkt es, weil das Programm ja startet.
+- (In `fish` ging es zufällig gut: die sortiert 1.9 **vor** 1.19. Auf dem eigenen Rechner fällt so ein Fehler deshalb nie auf.)
+- **Jetzt** nennt die Anleitung den **vollen Dateinamen** und wechselt vorher in den Ordner:
+  ```
+  cd ~/Downloads
+  sudo apt install ./rikus-zram_1.20_all.deb
+  ```
+- Damit die Nummer nicht veraltet, **setzt das Bauskript sie bei jedem Bau selbst ein**. Sie steht weiterhin nur an einer einzigen Stelle.
+- Geändert an **allen** Stellen: `ANLEITUNG.md`, `GUIDE.md`, `README.md`, `README.de.md` und auf der Webseite.
+
+*Am Programm selbst hat sich nichts geändert.*
+
+**🔴 🇬🇧 The install command in the guide could install the WRONG version.**
+
+- The guide said `sudo apt install ~/Downloads/rikus-zram*.deb`. The wildcard lets the shell decide which file is meant — and **`bash` sorts alphabetically**, where **1.9 comes after 1.19**. With both in the Downloads folder, the last one named wins.
+- **Measured on 22 July 2026 in a fresh Debian 13:** the wildcard command installed the **old 1.9** instead of the new 1.19. Nobody notices, because the program starts either way.
+- (In `fish` it happened to work: it sorts 1.9 **before** 1.19. Which is why such a fault never shows up on your own machine.)
+- **Now** the guide names the **full file name** and changes into the folder first. The build script fills in the version on every build, so it cannot go stale.
+- Corrected in **all** places: `ANLEITUNG.md`, `GUIDE.md`, `README.md`, `README.de.md` and on the website.
+
+*No change to the program itself.*
+
+---
+
 ## 1.19 — 22. Juli 2026
 
 **🔴🔴 🇩🇪 Das Programm bedient jetzt ALLE DREI zram-Werkzeuge — nicht mehr nur eines.**

@@ -34,10 +34,11 @@ The catch: configuring this means typing commands and editing system files. Riku
 <summary>Prefer the terminal?</summary>
 
 ```
-sudo apt install ~/Downloads/rikus-zram*.deb
+cd ~/Downloads
+sudo apt install ./rikus-zram_1.20_all.deb
 ```
 
-Works from any folder. The `*` matches **any** release and stays correct for future ones. Use `apt install`, not `dpkg -i`.
+Name the file in full — **not** `rikus-zram*.deb`: with several versions in the folder `bash` sorts alphabetically and **1.9 comes after 1.19**, so the wildcard installs the older one (measured 22 July 2026). Via the "latest version" button the file is called `rikus-zram-neueste.deb`. Use `apt install`, not `dpkg -i`.
 </details>
 
 **Runs on:** Debian, Ubuntu, Linux Mint, LMDE, MX Linux, antiX, Zorin, Pop!\_OS and relatives.

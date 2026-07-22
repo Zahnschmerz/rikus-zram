@@ -34,10 +34,11 @@ Der Haken: Einstellen lässt sich das bisher **nur über getippte Befehle und da
 <summary>Lieber im Terminal?</summary>
 
 ```
-sudo apt install ~/Downloads/rikus-zram*.deb
+cd ~/Downloads
+sudo apt install ./rikus-zram_1.20_all.deb
 ```
 
-Funktioniert aus jedem Ordner. Das `*` passt auf **jede** Fassung und bleibt auch künftig richtig. Bitte `apt install` nehmen, nicht `dpkg -i`.
+Den vollen Dateinamen nennen — **nicht** `rikus-zram*.deb` mit Stern: Liegen mehrere Fassungen im Ordner, sortiert `bash` alphabetisch und **1.9 steht hinter 1.19**; der Stern-Befehl installiert dann die ältere (am 22.07.2026 nachgemessen). Über den Knopf „neueste Fassung" heißt die Datei `rikus-zram-neueste.deb`. Bitte `apt install` nehmen, nicht `dpkg -i`.
 </details>
 
 **Läuft auf:** Debian, Ubuntu, Linux Mint, LMDE, MX Linux, antiX, Zorin, Pop!\_OS und Verwandten.

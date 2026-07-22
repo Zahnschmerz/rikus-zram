@@ -47,7 +47,7 @@ The program works with **systemd** and with **SysVinit** (so also on MX Linux an
 You do **not** need a terminal for this.
 
 **Step 1 — Download.**
-Open the download page and click the file starting with **`rikus-zram_`** and ending in **`.deb`** (e.g. `rikus-zram_1.10_all.deb` — the number is the release):
+Open the download page and click the file starting with **`rikus-zram_`** and ending in **`.deb`** (e.g. `rikus-zram_1.20_all.deb` — the number is the release):
 
 👉 **https://github.com/Zahnschmerz/rikus-zram/releases/latest**
 
@@ -64,10 +64,15 @@ Open your **Downloads** folder and **double-click** the file you just downloaded
 This single command is enough — it works from **any** folder:
 
 ```
-sudo apt install ~/Downloads/rikus-zram*.deb
+cd ~/Downloads
+sudo apt install ./rikus-zram_1.20_all.deb
 ```
 
-The `*` stands for the changing part of the file name. The command therefore matches **any** of the offered files — whichever release you downloaded — and stays correct for future releases.
+Change into the **Downloads** folder first, then name the file **in full**.
+
+⚠️ **Why not `rikus-zram*.deb` with a wildcard?** Because it can go wrong. If several versions sit in your Downloads folder, the standard shell (`bash`) sorts them *alphabetically* — and there **1.9 comes after 1.19**. Measured on 22 July 2026 in a fresh Debian 13: the wildcard command installed the **old 1.9** instead of the new one. Hence the full name here.
+
+If you used the **"latest version"** button, your file is called `rikus-zram-neueste.deb` — use that name instead.
 
 ⚠️ Use `apt install`, **not** `dpkg -i`: only `apt` pulls in missing dependencies by itself.
 

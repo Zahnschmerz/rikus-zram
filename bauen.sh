@@ -32,6 +32,22 @@ trap 'rm -rf "$BAUM"' EXIT
 
 echo "Baue Rikus Zram $VERSION"
 
+# --- Versionsnummer in den Anleitungen nachziehen --------------------------
+# 🔴 Seit 1.20 nennen die Anleitungen den Installationsbefehl MIT vollem
+# Dateinamen, also mit Versionsnummer. Grund: Der frueher benutzte Stern
+# (»rikus-zram*.deb«) laesst die Shell entscheiden, welche Datei gemeint ist
+# — und **bash sortiert alphabetisch**: Dort steht 1.9 HINTER 1.19.
+# Am 22.07.2026 in einem frischen Debian 13 nachgemessen: Der Stern-Befehl
+# installierte die **alte 1.9** statt der neuen. Genau die Falle, in die ein
+# Anfaenger mit zwei Downloads laeuft.
+#
+# Damit die Nummer nicht veraltet, wird sie hier bei JEDEM Bau eingesetzt.
+# Sie steht damit weiterhin nur an EINER Stelle: paket/DEBIAN/control.
+for DOK in ANLEITUNG.md GUIDE.md README.md README.de.md; do
+  sed -i -E "s|rikus-zram_[0-9]+\.[0-9]+_all\.deb|rikus-zram_${VERSION}_all.deb|g" "$DOK"
+done
+echo "  Installationsbefehl in den Anleitungen: rikus-zram_${VERSION}_all.deb"
+
 # --- Baum zusammenstellen: IMMER frisch aus dem Projekt --------------------
 # So koennen Paket und Projekt nicht auseinanderlaufen.
 mkdir -p "$BAUM/opt/rikus-zram" "$BAUM/usr/share/doc/rikus-zram"
