@@ -93,6 +93,17 @@ dpkg-deb -Zxz --root-owner-group --build "$BAUM" "$PAKET" >/dev/null
 # nicht gibt — und der eigene Ordnername waere mitveroeffentlicht.
 sha256sum "$PAKET" > "${PAKET}.sha256"
 
+# --- Kopie mit FESTEM Namen fuer den Download-Knopf ------------------------
+# ⚠️ NICHT WEGLASSEN. Der Download-Knopf auf zram.rikus.info und ALLE VIER
+# Anleitungen verweisen auf genau diesen Dateinamen — er darf sich nie
+# aendern, sonst muesste bei jeder Fassung die halbe Webseite nach.
+# Fehlt die Datei an einer Release, laeuft der Hauptknopf der Webseite ins
+# Leere (HTTP 404). Genau das ist bei 1.10 passiert: beim Veroeffentlichen
+# von Hand vergessen, ueber einen Tag lang konnte niemand herunterladen.
+# Seitdem entsteht sie hier automatisch — vergessen ist nicht mehr moeglich.
+NEUESTE="rikus-zram-neueste.deb"
+cp "$PAKET" "$NEUESTE"
+
 # --- Gegenprobe: lieber hier scheitern als beim Nutzer ---------------------
 echo
 echo "Gegenprobe:"
@@ -102,5 +113,28 @@ ar t "$PAKET" | grep -q 'data.tar.xz' \
 dpkg-deb -c "$PAKET" | grep -qv 'root/root' \
   && { echo "  ❌ Dateien gehoeren nicht root — Abbruch"; exit 1; } \
   || echo "  ✅ alle Dateien gehoeren root"
+cmp -s "$PAKET" "$NEUESTE" \
+  && echo "  ✅ $NEUESTE angelegt (das holt der Download-Knopf)" \
+  || { echo "  ❌ $NEUESTE fehlt oder weicht ab — Abbruch"; exit 1; }
 echo "  ✅ $PAKET ($(stat -c%s "$PAKET") Bytes)"
 echo "  ✅ $(cat "${PAKET}.sha256")"
+
+# --- Der fertige Veroeffentlichungs-Befehl ---------------------------------
+# Steht hier, damit niemand ihn aus dem Kopf tippt und dabei eine Datei
+# vergisst. ALLE DREI Dateien gehoeren an die Release:
+#   das Paket · seine Pruefsumme · die Kopie fuer den Download-Knopf
+cat <<ENDE
+
+Zum Veroeffentlichen — bitte genau so, mit ALLEN DREI Dateien:
+
+  gh release create v$VERSION \\
+    "$PAKET" "${PAKET}.sha256" "$NEUESTE" \\
+    --title "Rikus Zram $VERSION" --latest --notes-file <textdatei>
+
+Danach PRUEFEN, ob der Download-Knopf der Webseite wirklich laedt:
+
+  curl -sIL -o /dev/null -w '%{http_code}\\n' \\
+    https://github.com/Zahnschmerz/rikus-zram/releases/latest/download/$NEUESTE
+
+  -> muss 200 sagen. Sagt es 404, fehlt $NEUESTE an der Release.
+ENDE
