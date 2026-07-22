@@ -126,6 +126,25 @@ Rikus Zram schreibt bewusst **GiB**, damit die Zahlen zu dem passen, was der Res
 
 ---
 
+### ⚠️ Wenn ein anderes Werkzeug zuständig ist
+
+Für zram gibt es **zwei** verbreitete Werkzeuge:
+
+| | Einstellungsdatei | Dienst |
+|---|---|---|
+| **zram-tools** — das bedient dieses Programm | `/etc/default/zramswap` | `zramswap` |
+| **systemd-zram-generator** | `/etc/systemd/zram-generator.conf` | `systemd-zram-setup@zram0` |
+
+Läuft auf deinem Rechner der **zweite**, sagt Rikus Zram das auf der ersten Seite und **sperrt die Änderungs-Knöpfe**. Anschauen und Messen geht weiterhin — nur Ändern nicht, denn sonst gäbe es zwei Einrichtungen, die sich gegenseitig ins Gehege kommen.
+
+Wer dort etwas ändern möchte, bearbeitet die Datei von Hand und lädt sie neu:
+
+```
+sudo systemctl restart systemd-zram-setup@zram0
+```
+
+---
+
 ## 5. Die zweite Seite: Was wäre besser?
 
 Hier siehst du **drei Schieberegler**. Sie stehen auf dem, **was bei dir gerade läuft**. Auf der Skala darunter ist markiert, was für deinen Rechner **empfohlen** wäre — dorthin schiebst du selbst, wenn du möchtest.

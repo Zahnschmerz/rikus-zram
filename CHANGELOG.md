@@ -5,6 +5,26 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.14 — 22. Juli 2026
+
+**🔴 🇩🇪 Wichtig: Das Programm erkennt jetzt, wenn ein ANDERES Werkzeug das zram regelt — und hält sich heraus.**
+
+- **Das Problem:** Für zram gibt es zwei verbreitete Werkzeuge. Dieses Programm bedient **`zram-tools`** (`/etc/default/zramswap`, Dienst `zramswap`). Daneben gibt es den **`systemd-zram-generator`** (`/etc/systemd/zram-generator.conf`, Dienst `systemd-zram-setup@zram0`) — er ist verbreiteter, als lange angenommen: **auf drei von sechs geprüften Servern** war er im Einsatz, alle unter Debian 13.
+- **Bis Fassung 1.13 hat das Programm ihn nicht bemerkt.** Es hätte dort eine eigene Konfiguration angelegt und einen zweiten Dienst gestartet — **zwei Werkzeuge für dieselbe Sache auf demselben Rechner**. Auf einem Server mit laufenden Diensten ein unnötiges Risiko.
+- **Jetzt:** Das Programm erkennt den Fall, zeigt die dort geltenden Einstellungen (Größe, Verfahren, Priorität), **sperrt die Änderungs-Knöpfe** und sagt in Klartext, warum. **Anschauen und Messen funktioniert weiterhin.** Wer dort etwas ändern will, bekommt den passenden Weg genannt.
+- **Doppelt abgesichert:** Neben den grauen Knöpfen prüft auch das Übernehmen selbst noch einmal — selbst wenn die Sperre je umgangen würde, wird nichts geändert.
+- **Keine Auswirkung auf Rechner mit `zram-tools`:** Dort verhält sich alles wie bisher (gegengeprüft).
+
+**🔴 🇬🇧 Important: the program now detects when ANOTHER tool manages zram — and stays out of the way.**
+
+- **The problem:** Two common tools configure zram. This program operates **`zram-tools`** (`/etc/default/zramswap`, service `zramswap`). Alongside it there is **`systemd-zram-generator`** (`/etc/systemd/zram-generator.conf`, service `systemd-zram-setup@zram0`) — far more widespread than assumed: **three out of six servers checked** used it, all on Debian 13.
+- **Up to release 1.13 the program did not notice.** It would have written its own configuration and started a second service — **two tools doing the same job on one machine**. On a server running live services, an unnecessary risk.
+- **Now:** the program detects it, shows the settings in force there (size, algorithm, priority), **disables the apply buttons** and explains why in plain words. **Viewing and measuring still work.** Anyone wanting to change something is told the right way to do it.
+- **Belt and braces:** besides the greyed-out buttons, the apply routine checks again — even if the lock were bypassed, nothing gets changed.
+- **No effect on machines using `zram-tools`:** everything behaves as before (verified).
+
+---
+
 ## 1.13 — 22. Juli 2026
 
 **🔴 🇩🇪 Ein Rechenfehler beim zram-Regler — die genannte Datenmenge war um das 3,5-fache zu hoch.**

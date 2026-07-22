@@ -18,6 +18,33 @@ if [ -f /opt/rikus-zram/daten/rikus-zram.svg ]; then
             /usr/share/icons/hicolor/scalable/apps/rikus-zram.svg
 fi
 
+# --------------------------------------------------------------------------
+# Regelt auf diesem Rechner der systemd-zram-generator das zram?
+# Dann ist der Dienst "zramswap" (aus der Abhaengigkeit zram-tools) hier
+# UEBERFLUESSIG -- er scheitert beim Start, weil /dev/zram0 schon belegt ist,
+# und bleibt dauerhaft auf "failed" stehen. Auf einem Server ist das Muell:
+# bei jedem Hochfahren eine rote Fehlermeldung fuer einen Dienst, der gar
+# nicht gebraucht wird.
+#
+# 🔴 Gemessen am 22.07.2026 auf Gilberts debian: nach der Installation stand
+#    zramswap auf "failed" UND "enabled" -- waere also bei jedem Neustart
+#    wieder gescheitert. Das laufende zram des Generators blieb unberuehrt
+#    (4 GiB, zstd) -- es ging nichts kaputt, aber es blieb Dreck zurueck.
+#
+# ⚠️ NUR abschalten, NICHT entfernen: Wer spaeter auf zram-tools umsteigen
+#    will, schaltet ihn mit "systemctl enable --now zramswap" wieder ein.
+if [ -f /etc/systemd/zram-generator.conf ] || [ -f /usr/lib/systemd/zram-generator.conf ]; then
+    if command -v systemctl >/dev/null 2>&1; then
+        if systemctl is-active --quiet systemd-zram-setup@zram0.service 2>/dev/null; then
+            systemctl disable --now zramswap.service >/dev/null 2>&1 || true
+            systemctl reset-failed zramswap.service   >/dev/null 2>&1 || true
+            echo "Hinweis: zram wird hier von systemd-zram-generator geregelt."
+            echo "         Der ueberfluessige Dienst zramswap wurde abgeschaltet."
+            echo "         Wieder einschalten mit: systemctl enable --now zramswap"
+        fi
+    fi
+fi
+
 gtk-update-icon-cache -q -f /usr/share/icons/hicolor 2>/dev/null || true
 update-desktop-database -q /usr/share/applications 2>/dev/null || true
 exit 0

@@ -126,6 +126,25 @@ Rikus Zram deliberately says **GiB** so its numbers match the rest of your syste
 
 ---
 
+### ⚠️ When another tool is in charge
+
+There are **two** common tools for zram:
+
+| | Settings file | Service |
+|---|---|---|
+| **zram-tools** — the one this program operates | `/etc/default/zramswap` | `zramswap` |
+| **systemd-zram-generator** | `/etc/systemd/zram-generator.conf` | `systemd-zram-setup@zram0` |
+
+If your machine uses the **second**, Rikus Zram says so on the first page and **disables the apply buttons**. Viewing and measuring still work — only changing does not, because two competing setups would get in each other's way.
+
+To change it there, edit the file by hand and reload:
+
+```
+sudo systemctl restart systemd-zram-setup@zram0
+```
+
+---
+
 ## 5. Second page: what would be better?
 
 Here you find **three sliders**. They sit on **what is currently running** on your machine. The scale below marks what would be **recommended** for your system — you move the slider there yourself if you want.

@@ -38,7 +38,7 @@ gi.require_version('Gtk', '3.0')
 # Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
 from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.13'
+VERSION = '1.14'
 
 
 # ---------------------------------------------------------------------------
@@ -280,6 +280,47 @@ def einstellung_messen():
         s, w = zeile.split('=', 1)
         werte[s.strip()] = w.strip().strip('"').strip("'")
     return {'vorhanden': True, 'werte': werte, 'pfad': pfad}
+
+
+GENERATOR_PFADE = ['/etc/systemd/zram-generator.conf',
+                   '/usr/lib/systemd/zram-generator.conf',
+                   '/etc/systemd/zram-generator.conf.d']
+
+
+def generator_messen():
+    """Regelt auf diesem Rechner ein ANDERES Werkzeug das zram?
+
+    🔴🔴 Gefunden am 22.07.2026 beim Ausrollen auf Gilberts Server: **drei von
+    sechs** (debian, rk-pr01, pi4) benutzen nicht `zram-tools`, sondern den
+    **systemd-zram-generator** — ein voellig anderes Werkzeug fuer dieselbe
+    Aufgabe:
+
+        zram-tools:            /etc/default/zramswap        · Dienst zramswap
+        systemd-zram-generator: /etc/systemd/zram-generator.conf
+                               · Dienst systemd-zram-setup@zram0
+
+    Dieses Programm kann nur den ersten. Waere es dort blind gelaufen, haette
+    es `/etc/default/zramswap` angelegt und den Dienst `zramswap` gestartet —
+    **zwei zram-Systeme parallel auf demselben Rechner**, auf einem
+    Produktivserver (Nextcloud, Immich, Paperless) ein unnoetiges Risiko.
+
+    ➡️ Deshalb wird der Fall ERKANNT und das Programm haelt sich heraus,
+    statt Schaden anzurichten. Anschauen bleibt erlaubt — nur Aendern nicht.
+    """
+    pfade = [p for p in GENERATOR_PFADE if os.path.exists(p)]
+    if not pfade:
+        return {'aktiv': False, 'pfad': None, 'werte': {}}
+    werte = {}
+    for p in pfade:
+        if os.path.isdir(p):
+            continue
+        for zeile in _lies(p).splitlines():
+            zeile = zeile.split('#')[0].strip()
+            if '=' not in zeile or zeile.startswith('['):
+                continue
+            s, w = zeile.split('=', 1)
+            werte[s.strip()] = w.strip()
+    return {'aktiv': True, 'pfad': pfade[0], 'werte': werte}
 
 
 def system_messen():
@@ -975,7 +1016,7 @@ def sicherungen_finden():
     return sorted(treffer)
 
 
-def bewerten(ram, zram, swap, swp, einst, empf=None):
+def bewerten(ram, zram, swap, swp, einst, empf=None, gen=None):
     """Ampel und Klartext-Urteil fuer die erste Seite.
 
     ⚠️⚠️ `empf` ist NICHT optional im Sinne von „egal" — ohne die Empfehlung
@@ -998,6 +1039,45 @@ def bewerten(ram, zram, swap, swp, einst, empf=None):
     hinweise = []
     zram_laeuft = len(zram) > 0
     swap_platte = [s for s in swap if not s['ist_zram']]
+
+    # --- Regelt hier ein ANDERES Werkzeug? (siehe generator_messen) --------
+    # Steht ganz vorne, weil in diesem Fall JEDE andere Empfehlung in die
+    # Irre fuehren wuerde: Das Programm koennte zwar messen, aber sein
+    # Aendern wuerde eine zweite, konkurrierende Einrichtung erzeugen.
+    if gen and gen['aktiv']:
+        g = gen['werte']
+        wie = []
+        if g.get('zram-size'): wie.append(t(f'Groesse {sicher(g["zram-size"])}',
+                                            f'size {sicher(g["zram-size"])}'))
+        if g.get('compression-algorithm'):
+            wie.append(t(f'Verfahren {sicher(g["compression-algorithm"])}',
+                         f'algorithm {sicher(g["compression-algorithm"])}'))
+        if g.get('swap-priority'): wie.append(t(f'Prioritaet {sicher(g["swap-priority"])}',
+                                                f'priority {sicher(g["swap-priority"])}'))
+        detail = (' (' + ' · '.join(wie) + ')') if wie else ''
+        return ('gelb',
+                t('Auf diesem Rechner regelt ein anderes Werkzeug das zram.',
+                  'Another tool manages zram on this machine.'),
+                [t(f'zram wird hier von <b>systemd-zram-generator</b> '
+                   f'eingestellt{detail} — nicht von <tt>zram-tools</tt>, das '
+                   f'dieses Programm bedient. Die Einstellungen stehen in '
+                   f'<tt>{sicher(gen["pfad"])}</tt>.',
+                   f'zram here is configured by <b>systemd-zram-generator</b>'
+                   f'{detail} — not by <tt>zram-tools</tt>, which this program '
+                   f'operates. The settings live in '
+                   f'<tt>{sicher(gen["pfad"])}</tt>.'),
+                 t('<b>Dieses Programm ändert hier nichts.</b> Es würde sonst '
+                   'eine zweite, konkurrierende Einrichtung anlegen — zwei '
+                   'Werkzeuge für dieselbe Sache vertragen sich nicht. '
+                   'Anschauen und Messen funktioniert weiterhin.',
+                   '<b>This program changes nothing here.</b> Doing so would '
+                   'create a second, competing setup — two tools for the same '
+                   'job do not get along. Viewing and measuring still work.'),
+                 t('Wer die Einstellung ändern will, bearbeitet die Datei oben '
+                   'von Hand und lädt sie mit <tt>systemctl restart '
+                   'systemd-zram-setup@zram0</tt> neu.',
+                   'To change it, edit the file above by hand and reload with '
+                   '<tt>systemctl restart systemd-zram-setup@zram0</tt>.')])
 
     if not zram_laeuft and not swap:
         return ('rot',
@@ -1384,6 +1464,7 @@ class RikusZram(Gtk.Window):
         swap = swap_messen()
         swp = swappiness_messen()
         einst = einstellung_messen()
+        gen = generator_messen()
         sys_ = system_messen()
         platte = platte_messen()
         ruhe = ruhezustand_messen()
@@ -1393,7 +1474,7 @@ class RikusZram(Gtk.Window):
         # bewerten() ein leeres empf und meldet wieder faelschlich „gruen"
         # bei halb eingestelltem zram (Gilberts pi5, 22.07.2026).
         empf = empfehlung_rechnen(ram, zram, swap, swp, platte, ruhe)
-        ampel, urteil, hinweise = bewerten(ram, zram, swap, swp, einst, empf)
+        ampel, urteil, hinweise = bewerten(ram, zram, swap, swp, einst, empf, gen)
 
         # fuer den Uebernehmen-Knopf merken
         # ⚠️ 'zram' MUSS hier stehen: _uebernehmen() reicht es an
@@ -1403,7 +1484,7 @@ class RikusZram(Gtk.Window):
         # konnte NICHTS mehr aendern, sondern nur noch anzeigen.
         self.daten = {'sys': sys_, 'swp': swp, 'einst': einst, 'ram': ram,
                       'swap': swap, 'platte': platte, 'ruhe': ruhe,
-                      'zram': zram}
+                      'zram': zram, 'gen': gen}
 
         self._seite1(ram, zram, swap, swp, einst, sys_, platte, ruhe,
                      ampel, urteil, hinweise, empf)
@@ -1905,6 +1986,27 @@ class RikusZram(Gtk.Window):
         knoepfe.pack_start(k2, True, True, 0)
         box.pack_start(knoepfe, False, False, 4)
 
+        # --- Fremdes Werkzeug: Knöpfe SPERREN, nicht nur warnen ------------
+        # Bauregel: „Was nicht geht, wird gesperrt — nicht mit Kleingedrucktem
+        # erklärt." Läuft hier systemd-zram-generator, würde jede Änderung
+        # eine zweite, konkurrierende Einrichtung anlegen. Die Ampel auf
+        # Seite 1 erklärt den Grund ausführlich; hier steht die Kurzfassung
+        # direkt bei den grauen Knöpfen, damit niemand rätselt.
+        gen = self.daten.get('gen') or {}
+        if gen.get('aktiv'):
+            for knopf in (k1, k2):
+                knopf.set_sensitive(False)
+            self._zeile(box, t(
+                '<b>Ändern ist hier gesperrt.</b> Auf diesem Rechner regelt '
+                '<b>systemd-zram-generator</b> das zram, nicht das Werkzeug, '
+                'das dieses Programm bedient. Eine Änderung von hier aus '
+                'würde eine zweite, konkurrierende Einrichtung anlegen. '
+                'Die Übersicht auf der ersten Seite erklärt es genauer.',
+                '<b>Changing is disabled here.</b> On this machine '
+                '<b>systemd-zram-generator</b> manages zram, not the tool this '
+                'program operates. Changing from here would create a second, '
+                'competing setup. The overview page explains it in detail.'))
+
         sich = sicherungen_finden()
         if sich:
             zurueck = Gtk.Button(
@@ -1937,6 +2039,27 @@ class RikusZram(Gtk.Window):
         d.destroy()
 
     def _uebernehmen(self, nur_zeigen):
+        # Zweite Sicherung: Auch wenn der Knopf je wieder klickbar würde (etwa
+        # weil jemand die Sperre oben umbaut), wird hier nichts geändert,
+        # solange ein anderes Werkzeug zuständig ist.
+        gen = self.daten.get('gen') or {}
+        if gen.get('aktiv'):
+            self._dialog(
+                Gtk.MessageType.WARNING,
+                t('Hier ist ein anderes Werkzeug zuständig',
+                  'Another tool is in charge here'),
+                t(f'Auf diesem Rechner stellt systemd-zram-generator das zram '
+                  f'ein ({gen.get("pfad")}). Dieses Programm bedient '
+                  f'zram-tools. Würde es hier etwas ändern, entstünde eine '
+                  f'zweite, konkurrierende Einrichtung — zwei Werkzeuge für '
+                  f'dieselbe Sache vertragen sich nicht.\n\nEs wurde nichts '
+                  f'verändert.',
+                  f'On this machine systemd-zram-generator configures zram '
+                  f'({gen.get("pfad")}). This program operates zram-tools. '
+                  f'Changing anything here would create a second, competing '
+                  f'setup — two tools for the same job do not get along.'
+                  f'\n\nNothing was changed.'))
+            return
         ziel_p = int(self.regler_turbo.get_value())
         ziel_s = int(self.regler_freude.get_value())
         ziel_sw = int(self.regler_reserve.get_value())
