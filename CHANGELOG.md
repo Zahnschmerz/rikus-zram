@@ -5,6 +5,24 @@ All releases of Rikus Zram, newest first.
 
 ---
 
+## 1.18 — 22. Juli 2026
+
+**🔴 🇩🇪 Ein drittes zram-Werkzeug erkannt: `rpi-swap` auf Raspberry Pi OS.**
+
+- Für zram gibt es nicht zwei, sondern **drei** verbreitete Werkzeuge. Neben `zram-tools` (das dieses Programm bedient) und dem `systemd-zram-generator` regelt auf **Raspberry Pi OS** ein eigener Mechanismus namens **`rpi-swap`** die Auslagerung — über `/etc/rpi/swap.conf`, mit einer selbst erzeugten Swap-Einheit.
+- **Bis Fassung 1.17 kannte das Programm ihn nicht.** Auf einem reinen Raspberry-Pi-System hätte es sich für zuständig gehalten, `/etc/default/zramswap` angelegt und einen zweiten Dienst gestartet — **zwei Werkzeuge für dieselbe Sache.** Genau der Fehler, den 1.14 für den Generator behoben hatte.
+- **Jetzt** wird `rpi-swap` erkannt und **zuerst** geprüft: Wo es läuft, ist es der Chef — es erzeugt die Swap-Einheit selbst und übergeht die Generator-Konfiguration.
+- Alle Meldungen nennen jetzt das **tatsächlich zuständige Werkzeug beim Namen** und den passenden Befehl zum Neuladen, statt pauschal vom Generator zu sprechen.
+
+**🔴 🇬🇧 A third zram tool detected: `rpi-swap` on Raspberry Pi OS.**
+
+- There are not two but **three** widespread tools for zram. Besides `zram-tools` (the one this program operates) and `systemd-zram-generator`, **Raspberry Pi OS** manages swap through its own mechanism, **`rpi-swap`**, via `/etc/rpi/swap.conf` with a swap unit it generates itself.
+- **Up to 1.17 the program did not know about it.** On a plain Raspberry Pi system it would have considered itself in charge, written `/etc/default/zramswap` and started a second service — **two tools for the same job.** Exactly the fault 1.14 fixed for the generator.
+- **Now** `rpi-swap` is detected and checked **first**: where it runs, it is in charge — it creates the swap unit itself and overrides the generator configuration.
+- All messages now name the **tool actually in charge** and give the matching reload command.
+
+---
+
 ## 1.17 — 22. Juli 2026
 
 **🔴 🇩🇪 Wichtig: Eine Änderung der zram-Größe griff bisher erst nach einem Neustart des Rechners.**

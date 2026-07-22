@@ -38,7 +38,7 @@ gi.require_version('Gtk', '3.0')
 # Wert zurueck — ohne Fehlermeldung, weil dort ein try/except steht.
 from gi.repository import Gtk, Pango, GLib, Gdk
 
-VERSION = '1.17'
+VERSION = '1.18'
 
 
 # ---------------------------------------------------------------------------
@@ -285,6 +285,50 @@ def einstellung_messen():
 GENERATOR_PFADE = ['/etc/systemd/zram-generator.conf',
                    '/usr/lib/systemd/zram-generator.conf',
                    '/etc/systemd/zram-generator.conf.d']
+
+
+def fremdes_werkzeug_messen():
+    """Regelt ein anderes Werkzeug als zram-tools das zram? Welches?
+
+    Es gibt mindestens DREI Werkzeuge fuer dieselbe Aufgabe — alle drei am
+    22.07.2026 in Gilberts Flotte angetroffen:
+
+      zram-tools              /etc/default/zramswap        Dienst zramswap
+      systemd-zram-generator  /etc/systemd/zram-generator.conf
+                              (auch /usr/lib/...)          systemd-zram-setup@
+      rpi-swap                /etc/rpi/swap.conf           dev-zram0.swap
+                              (Raspberry Pi OS)
+
+    Dieses Programm bedient nur das erste. Laeuft eines der anderen, muss es
+    sich heraushalten — sonst entstehen zwei konkurrierende Einrichtungen.
+
+    🔴 rpi-swap kam erst NACH v1.14 dazu: Auf pi4 warnte das Programm zwar,
+    aber aus dem falschen Grund (es fand zufaellig auch eine Generator-Datei).
+    Auf einem reinen Raspberry-Pi-System OHNE Generator-Datei haette es sich
+    fuer zustaendig gehalten und /etc/default/zramswap angelegt — genau der
+    Fehler, den v1.14 fuer den Generator behoben hat.
+    """
+    # rpi-swap zuerst pruefen: Wo es laeuft, ist es der Chef — es erzeugt die
+    # Swap-Einheit selbst und ignoriert die Generator-Konfiguration.
+    if (os.path.exists('/etc/rpi/swap.conf')
+            or os.path.exists('/usr/lib/systemd/system-generators/rpi-swap-generator')):
+        werte = {}
+        for zeile in _lies('/etc/rpi/swap.conf').splitlines():
+            zeile = zeile.split('#')[0].strip()
+            if '=' in zeile and not zeile.startswith('['):
+                s, w = zeile.split('=', 1)
+                werte[s.strip()] = w.strip()
+        return {'aktiv': True, 'name': 'rpi-swap',
+                'pfad': '/etc/rpi/swap.conf', 'werte': werte,
+                'neustart': 'systemctl restart dev-zram0.swap'}
+
+    gen = generator_messen()
+    if gen['aktiv']:
+        gen['name'] = 'systemd-zram-generator'
+        gen['neustart'] = 'systemctl restart systemd-zram-setup@zram0'
+        return gen
+    return {'aktiv': False, 'name': None, 'pfad': None, 'werte': {},
+            'neustart': None}
 
 
 def generator_messen():
@@ -1180,14 +1224,16 @@ def bewerten(ram, zram, swap, swp, einst, empf=None, gen=None):
         if g.get('swap-priority'): wie.append(t(f'Prioritaet {sicher(g["swap-priority"])}',
                                                 f'priority {sicher(g["swap-priority"])}'))
         detail = (' (' + ' · '.join(wie) + ')') if wie else ''
+        name = sicher(gen.get('name') or 'ein anderes Werkzeug')
+        neustart = gen.get('neustart') or 'systemctl restart <dienst>'
         return ('gelb',
                 t('Auf diesem Rechner regelt ein anderes Werkzeug das zram.',
                   'Another tool manages zram on this machine.'),
-                [t(f'zram wird hier von <b>systemd-zram-generator</b> '
+                [t(f'zram wird hier von <b>{name}</b> '
                    f'eingestellt{detail} — nicht von <tt>zram-tools</tt>, das '
                    f'dieses Programm bedient. Die Einstellungen stehen in '
                    f'<tt>{sicher(gen["pfad"])}</tt>.',
-                   f'zram here is configured by <b>systemd-zram-generator</b>'
+                   f'zram here is configured by <b>{name}</b>'
                    f'{detail} — not by <tt>zram-tools</tt>, which this program '
                    f'operates. The settings live in '
                    f'<tt>{sicher(gen["pfad"])}</tt>.'),
@@ -1589,7 +1635,7 @@ class RikusZram(Gtk.Window):
         swap = swap_messen()
         swp = swappiness_messen()
         einst = einstellung_messen()
-        gen = generator_messen()
+        gen = fremdes_werkzeug_messen()
         sys_ = system_messen()
         platte = platte_messen()
         ruhe = ruhezustand_messen()
@@ -2121,16 +2167,17 @@ class RikusZram(Gtk.Window):
         if gen.get('aktiv'):
             for knopf in (k1, k2):
                 knopf.set_sensitive(False)
+            wer = sicher(gen.get('name') or 'ein anderes Werkzeug')
             self._zeile(box, t(
-                '<b>Ändern ist hier gesperrt.</b> Auf diesem Rechner regelt '
-                '<b>systemd-zram-generator</b> das zram, nicht das Werkzeug, '
-                'das dieses Programm bedient. Eine Änderung von hier aus '
-                'würde eine zweite, konkurrierende Einrichtung anlegen. '
-                'Die Übersicht auf der ersten Seite erklärt es genauer.',
-                '<b>Changing is disabled here.</b> On this machine '
-                '<b>systemd-zram-generator</b> manages zram, not the tool this '
-                'program operates. Changing from here would create a second, '
-                'competing setup. The overview page explains it in detail.'))
+                f'<b>Ändern ist hier gesperrt.</b> Auf diesem Rechner regelt '
+                f'<b>{wer}</b> das zram, nicht das Werkzeug, '
+                f'das dieses Programm bedient. Eine Änderung von hier aus '
+                f'würde eine zweite, konkurrierende Einrichtung anlegen. '
+                f'Die Übersicht auf der ersten Seite erklärt es genauer.',
+                f'<b>Changing is disabled here.</b> On this machine '
+                f'<b>{wer}</b> manages zram, not the tool this '
+                f'program operates. Changing from here would create a second, '
+                f'competing setup. The overview page explains it in detail.'))
 
         sich = sicherungen_finden()
         if sich:
@@ -2173,13 +2220,13 @@ class RikusZram(Gtk.Window):
                 Gtk.MessageType.WARNING,
                 t('Hier ist ein anderes Werkzeug zuständig',
                   'Another tool is in charge here'),
-                t(f'Auf diesem Rechner stellt systemd-zram-generator das zram '
+                t(f'Auf diesem Rechner stellt {gen.get("name") or "ein anderes Werkzeug"} das zram '
                   f'ein ({gen.get("pfad")}). Dieses Programm bedient '
                   f'zram-tools. Würde es hier etwas ändern, entstünde eine '
                   f'zweite, konkurrierende Einrichtung — zwei Werkzeuge für '
                   f'dieselbe Sache vertragen sich nicht.\n\nEs wurde nichts '
                   f'verändert.',
-                  f'On this machine systemd-zram-generator configures zram '
+                  f'On this machine {gen.get("name") or "another tool"} configures zram '
                   f'({gen.get("pfad")}). This program operates zram-tools. '
                   f'Changing anything here would create a second, competing '
                   f'setup — two tools for the same job do not get along.'

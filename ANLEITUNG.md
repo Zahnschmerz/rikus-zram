@@ -128,12 +128,13 @@ Rikus Zram schreibt bewusst **GiB**, damit die Zahlen zu dem passen, was der Res
 
 ### ⚠️ Wenn ein anderes Werkzeug zuständig ist
 
-Für zram gibt es **zwei** verbreitete Werkzeuge:
+Für zram gibt es **drei** verbreitete Werkzeuge:
 
 | | Einstellungsdatei | Dienst |
 |---|---|---|
 | **zram-tools** — das bedient dieses Programm | `/etc/default/zramswap` | `zramswap` |
 | **systemd-zram-generator** | `/etc/systemd/zram-generator.conf` | `systemd-zram-setup@zram0` |
+| **rpi-swap** (Raspberry Pi OS) | `/etc/rpi/swap.conf` | `dev-zram0.swap` |
 
 Läuft auf deinem Rechner der **zweite**, sagt Rikus Zram das auf der ersten Seite und **sperrt die Änderungs-Knöpfe**. Anschauen und Messen geht weiterhin — nur Ändern nicht, denn sonst gäbe es zwei Einrichtungen, die sich gegenseitig ins Gehege kommen.
 
